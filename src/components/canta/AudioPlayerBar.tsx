@@ -3,12 +3,16 @@ import { feedItems } from "@/lib/canta-data";
 import { Play, Pause, SkipForward, SkipBack, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoice } from "@/lib/canta-store";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const AudioPlayerBar = () => {
   const { itemId, playing, toggle, stop, play } = usePlayer();
   const { setOpen } = useVoice();
   const [progress, setProgress] = useState(0);
+  const [drag, setDrag] = useState(0);
+  const [dismissing, setDismissing] = useState(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const axisRef = useRef<"x" | "y" | null>(null);
 
   const item = feedItems.find((i) => i.id === itemId);
   const idx = item ? feedItems.findIndex((i) => i.id === item.id) : -1;
@@ -26,9 +30,53 @@ export const AudioPlayerBar = () => {
   const next = () => idx < feedItems.length - 1 && play(feedItems[idx + 1].id);
   const prev = () => idx > 0 && play(feedItems[idx - 1].id);
 
+  const onPointerDown = (e: React.PointerEvent) => {
+    startRef.current = { x: e.clientX, y: e.clientY };
+    axisRef.current = null;
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!startRef.current) return;
+    const dx = e.clientX - startRef.current.x;
+    const dy = e.clientY - startRef.current.y;
+    if (!axisRef.current) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axisRef.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (axisRef.current === "x") setDrag(dx);
+  };
+  const endDrag = () => {
+    if (Math.abs(drag) > 100) {
+      const dir = drag > 0 ? 1 : -1;
+      setDismissing(true);
+      setDrag(dir * 600);
+      setTimeout(() => {
+        stop();
+        setDismissing(false);
+        setDrag(0);
+      }, 200);
+    } else {
+      setDrag(0);
+    }
+    startRef.current = null;
+    axisRef.current = null;
+  };
+
+  const opacity = Math.max(0, 1 - Math.abs(drag) / 220);
+
   return (
     <div className="fixed bottom-[68px] lg:bottom-4 inset-x-0 z-40 px-3 lg:left-60 animate-fade-up">
-      <div className="mx-auto max-w-3xl glass border border-border/60 rounded-2xl shadow-elevated overflow-hidden">
+      <div
+        className="mx-auto max-w-3xl glass border border-border/60 rounded-2xl shadow-elevated overflow-hidden touch-pan-y"
+        style={{
+          transform: `translateX(${drag}px)`,
+          opacity,
+          transition: dismissing || drag === 0 ? "transform 0.2s ease, opacity 0.2s ease" : "none",
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         <div className="h-1 bg-muted relative">
           <div className="absolute inset-y-0 left-0 bg-gradient-hero transition-all" style={{ width: `${progress}%` }} />
         </div>
