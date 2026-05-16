@@ -11,8 +11,11 @@ export const AudioPlayerBar = () => {
   const [progress, setProgress] = useState(0);
   const [drag, setDrag] = useState(0);
   const [dismissing, setDismissing] = useState(false);
+  const [armed, setArmed] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
-  const axisRef = useRef<"x" | "y" | null>(null);
+  const axisRef = useRef<"x" | "v" | null>(null);
+  const armedRef = useRef(false);
+  const holdTimer = useRef<number | null>(null);
 
   const item = feedItems.find((i) => i.id === itemId);
   const idx = item ? feedItems.findIndex((i) => i.id === item.id) : -1;
@@ -30,22 +33,51 @@ export const AudioPlayerBar = () => {
   const next = () => idx < feedItems.length - 1 && play(feedItems[idx + 1].id);
   const prev = () => idx > 0 && play(feedItems[idx - 1].id);
 
+  const clearHold = () => {
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
     startRef.current = { x: e.clientX, y: e.clientY };
     axisRef.current = null;
+    armedRef.current = false;
+    setArmed(false);
+    clearHold();
+    holdTimer.current = window.setTimeout(() => {
+      armedRef.current = true;
+      setArmed(true);
+      if (navigator.vibrate) navigator.vibrate(15);
+    }, 450);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!startRef.current) return;
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
+
     if (!axisRef.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      axisRef.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        axisRef.current = "v";
+        clearHold();
+        armedRef.current = false;
+        setArmed(false);
+        return;
+      }
+      axisRef.current = "x";
     }
-    if (axisRef.current === "x") setDrag(dx);
+
+    if (axisRef.current === "x" && armedRef.current) {
+      setDrag(dx);
+    }
   };
   const endDrag = () => {
-    if (Math.abs(drag) > 100) {
+    clearHold();
+    const DISMISS_PX = 140;
+    if (armedRef.current && Math.abs(drag) > DISMISS_PX) {
       const dir = drag > 0 ? 1 : -1;
       setDismissing(true);
       setDrag(dir * 600);
@@ -53,20 +85,25 @@ export const AudioPlayerBar = () => {
         stop();
         setDismissing(false);
         setDrag(0);
+        setArmed(false);
       }, 200);
     } else {
       setDrag(0);
+      setArmed(false);
     }
     startRef.current = null;
     axisRef.current = null;
+    armedRef.current = false;
   };
 
-  const opacity = Math.max(0, 1 - Math.abs(drag) / 220);
+  const opacity = Math.max(0, 1 - Math.abs(drag) / 260);
 
   return (
     <div className="fixed bottom-[68px] lg:bottom-4 inset-x-0 z-40 px-3 lg:left-60 animate-fade-up">
       <div
-        className="mx-auto max-w-3xl glass border border-border/60 rounded-2xl shadow-elevated overflow-hidden touch-pan-y"
+        className={`mx-auto max-w-3xl glass border rounded-2xl shadow-elevated overflow-hidden touch-pan-y select-none ${
+          armed ? "border-primary/60 ring-2 ring-primary/30" : "border-border/60"
+        }`}
         style={{
           transform: `translateX(${drag}px)`,
           opacity,
