@@ -59,17 +59,17 @@ const Briefing = () => {
 
         <Section icon={AlertTriangle} label="Decisions required today" color="bg-gold-soft text-gold-foreground">
           <ul className="space-y-2 text-sm">
-            <li className="flex justify-between gap-3"><span>Confirm Thursday 2pm with Caldwell Capital</span><span className="text-muted-foreground text-xs shrink-0">Today EOD</span></li>
-            <li className="flex justify-between gap-3"><span>Counter Villacraft contract (net-30, liability cap)</span><span className="text-muted-foreground text-xs shrink-0">By May 9</span></li>
-            <li className="flex justify-between gap-3"><span>Approve infra commit re: vector DB scaling</span><span className="text-muted-foreground text-xs shrink-0">This week</span></li>
+            <li className="flex justify-between gap-3"><span>Confirm Thursday 2pm with Northbridge Capital</span><span className="text-muted-foreground text-xs shrink-0">Today EOD</span></li>
+            <li className="flex justify-between gap-3"><span>Counter Crownline Legal contract (net-30, liability cap)</span><span className="text-muted-foreground text-xs shrink-0">By May 9</span></li>
+            <li className="flex justify-between gap-3"><span>Approve Meridian Works infra commit</span><span className="text-muted-foreground text-xs shrink-0">This week</span></li>
           </ul>
         </Section>
 
         <Section icon={Calendar} label="Deadlines this week" color="bg-accent text-accent-foreground">
           <ul className="space-y-2 text-sm">
-            <li className="flex justify-between"><span>Updated burn deck → Caldwell</span><span className="text-muted-foreground text-xs">Tue</span></li>
-            <li className="flex justify-between"><span>Villacraft counter-signature</span><span className="text-muted-foreground text-xs">May 9</span></li>
-            <li className="flex justify-between"><span>SendUs phase-2 close-out</span><span className="text-muted-foreground text-xs">Fri</span></li>
+            <li className="flex justify-between"><span>Updated burn deck → Northbridge</span><span className="text-muted-foreground text-xs">Tue</span></li>
+            <li className="flex justify-between"><span>Crownline Legal counter-signature</span><span className="text-muted-foreground text-xs">May 9</span></li>
+            <li className="flex justify-between"><span>Atlas Ridge phase-2 close-out</span><span className="text-muted-foreground text-xs">Fri</span></li>
             <li className="flex justify-between"><span>Resurvey 18 Hoxton (zoning)</span><span className="text-muted-foreground text-xs">May 16</span></li>
           </ul>
         </Section>
@@ -77,13 +77,13 @@ const Briefing = () => {
         <Section icon={AlertTriangle} label="Risks on the radar" color="bg-destructive/10 text-destructive">
           <ul className="space-y-2 text-sm">
             <li>• Net-90 terms could stretch cash by ~22 days vs runway model.</li>
-            <li>• Liability cap removed on Villacraft — uncapped damages exposure.</li>
-            <li>• Burn up 12% MoM, runway down to 14.2 months.</li>
+            <li>• Liability cap removed on Crownline Legal — uncapped damages exposure.</li>
+            <li>• Meridian Works burn up 12% MoM, runway down to 14.2 months.</li>
           </ul>
         </Section>
 
         <Section icon={Eye} label="Strategic context" color="bg-gold-soft text-gold-foreground">
-          <p className="text-sm text-foreground/85">EU AI Act enforcement begins August 2. Compliance is becoming a B2B wedge — worth raising on Thursday's Caldwell call as a potential moat narrative.</p>
+          <p className="text-sm text-foreground/85">EU AI Act enforcement begins August 2. Compliance is becoming a B2B wedge — worth raising on Thursday's Northbridge call as a potential moat narrative.</p>
         </Section>
 
         <Section icon={Scissors} label="Cutting room floor" color="bg-muted text-muted-foreground">

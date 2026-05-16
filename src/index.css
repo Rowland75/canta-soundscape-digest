@@ -7,13 +7,13 @@
 @layer base {
   :root {
     --background: 220 30% 99%;
-    --foreground: 230 35% 12%;
+    --foreground: 215 68% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 35% 12%;
+    --card-foreground: 215 68% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 35% 12%;
+    --popover-foreground: 215 68% 13%;
 
     /* Brand: deep violet-blue */
     --primary: 244 72% 52%;

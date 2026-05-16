@@ -6,20 +6,23 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SUGGESTIONS = [
-  "Brief me on SendUs",
-  "Read full Villacraft contract",
-  "Unsubscribe from VendorPro",
-  "What is my burn rate?",
-  "Reply: we accept but insist on 2-inch hem",
+  "Brief me on Atlas Ridge.",
+  "Read the full Crownline Legal contract.",
+  "What changed in the Meridian Works budget?",
+  "Summarize the Northbridge investor thread.",
+  "Unsubscribe from the NovaAxis weekly digest.",
+  "Switch to Strategic Intelligence.",
 ];
 
 const respond = (q: string): { text: string; confirm?: string } => {
   const t = q.toLowerCase();
+  if (t.includes("atlas ridge")) return { text: "Atlas Ridge phase 2 validation cleared 14 of 16 listings. Two flagged for resurvey by May 16. No budget impact. Maya closes out Friday." };
+  if (t.includes("crownline")) return { text: "The revised Crownline Legal contract has three changes: net-90 payment terms (was net-30), liability cap removed, and tightened hem tolerance. I recommend pushing back on net-90 and reinstating the cap." };
+  if (t.includes("meridian")) return { text: "Meridian Works Q2 budget tightened 6% vs Q1. Marketing -$22k, Engineering +$28k, Travel -$6k. Risk: marketing underspend may impact Q3 pipeline." };
+  if (t.includes("northbridge")) return { text: "Northbridge Capital confirmed partner-level interest in leading the Series A. They want a working session Thursday and have asked for updated burn and the 18-month plan by EOD Tuesday." };
+  if (t.includes("unsubscribe") || t.includes("novaaxis")) return { text: "NovaAxis weekly digest: low engagement, last opened 3 weeks ago.", confirm: "Unsubscribe and clear backlog?" };
+  if (t.includes("strategic")) return { text: "Switched to Strategic Intelligence channel. 4 briefings queued." };
   if (t.includes("burn")) return { text: "Burn is $206k/month, up 12% MoM. Runway is 14.2 months. Main drivers: vector DB scaling (+$11k) and one new ML hire (+$9k)." };
-  if (t.includes("sendus")) return { text: "SendUs phase 2 validation cleared 14 of 16 listings. Two flagged for resurvey by May 16. No budget impact. Maya closes out Friday." };
-  if (t.includes("villacraft")) return { text: "The revised contract has three changes: net-90 payment terms (was net-30), liability cap removed, and tightened hem tolerance. I recommend pushing back on net-90 and reinstating the cap." };
-  if (t.includes("unsubscribe")) return { text: "VendorPro: 87 unread, 2/100 engagement, last opened 8 months ago.", confirm: "Unsubscribe and clear backlog?" };
-  if (t.includes("reply")) return { text: "Drafted reply to Villacraft Legal: 'We accept the revised hem tolerance. We need to retain net-30 terms and the existing liability cap before we can countersign.'", confirm: "Send this reply?" };
   return { text: "I can brief you on any project, read documents aloud, manage subscriptions, or draft replies. Try one of the suggestions below." };
 };
 
