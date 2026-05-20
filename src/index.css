@@ -2,11 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Canta Design System — premium, calm, executive, futuristic */
+/* Canta Design System — warm editorial, executive, audio-first */
 
 @layer base {
   :root {
-    /* Warm editorial taupe base — NomadaToast inspired */
     --background: 24 22% 86%;
     --foreground: 220 45% 11%;
 
@@ -16,7 +15,6 @@
     --popover: 30 30% 97%;
     --popover-foreground: 220 45% 11%;
 
-    /* Brand: deep ink navy — pill nav, primary buttons */
     --primary: 220 50% 10%;
     --primary-foreground: 30 30% 96%;
     --primary-glow: 244 60% 55%;
@@ -47,13 +45,13 @@
 
     --radius: 1.2rem;
 
-    /* Gradients — warm editorial */
     --gradient-hero: linear-gradient(135deg, hsl(220 50% 10%) 0%, hsl(244 40% 22%) 100%);
     --gradient-violet: linear-gradient(135deg, hsl(244 50% 45%), hsl(220 50% 18%));
     --gradient-soft: linear-gradient(180deg, hsl(24 28% 90%), hsl(24 20% 84%));
     --gradient-gold: linear-gradient(135deg, hsl(42 75% 58%), hsl(34 65% 46%));
     --gradient-card: linear-gradient(180deg, hsl(30 35% 97%), hsl(28 28% 93%));
     --gradient-warm: radial-gradient(ellipse at top left, hsl(28 40% 92%) 0%, hsl(22 20% 84%) 55%, hsl(20 18% 78%) 100%);
+    --gradient-orb: radial-gradient(circle at 30% 30%, hsl(244 80% 70%) 0%, hsl(280 70% 55%) 35%, hsl(220 60% 25%) 75%, hsl(220 50% 10%) 100%);
 
     --shadow-glow: 0 20px 60px -20px hsl(220 50% 10% / 0.4);
     --shadow-card: 0 1px 2px hsl(24 30% 20% / 0.06), 0 10px 30px -12px hsl(24 30% 20% / 0.14);
@@ -74,17 +72,16 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   html, body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
   }
   h1, h2, h3, .font-display {
-    font-family: 'Fraunces', 'Inter', serif;
-    letter-spacing: -0.02em;
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    letter-spacing: -0.03em;
+    font-weight: 500;
   }
 }
 
@@ -94,6 +91,8 @@
   .bg-gradient-soft { background: var(--gradient-soft); }
   .bg-gradient-gold { background: var(--gradient-gold); }
   .bg-gradient-card { background: var(--gradient-card); }
+  .bg-gradient-warm { background: var(--gradient-warm); }
+  .bg-gradient-orb { background: var(--gradient-orb); }
 
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-card { box-shadow: var(--shadow-card); }
@@ -107,9 +106,19 @@
   }
 
   .glass {
-    background: hsl(0 0% 100% / 0.72);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: hsl(30 30% 96% / 0.55);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+  .glass-dark {
+    background: hsl(220 50% 10% / 0.82);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+  .serif-italic {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-style: italic;
+    font-weight: 400;
   }
 }
 
@@ -135,7 +144,31 @@
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up { animation: fade-up 0.4s var(--transition-smooth) both; }
+.animate-fade-up { animation: fade-up 0.6s var(--transition-smooth) both; }
+
+/* Gemini Live-style reactive orb blobs */
+@keyframes orb-blob-1 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); border-radius: 60% 40% 50% 50% / 55% 45% 55% 45%; }
+  33% { transform: translate(-50%, -50%) scale(1.06) rotate(120deg); border-radius: 45% 55% 60% 40% / 50% 60% 40% 50%; }
+  66% { transform: translate(-50%, -50%) scale(0.96) rotate(240deg); border-radius: 55% 45% 40% 60% / 45% 50% 55% 50%; }
+}
+@keyframes orb-blob-2 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); border-radius: 45% 55% 50% 50% / 50% 50% 60% 40%; }
+  50% { transform: translate(-50%, -50%) scale(1.14) rotate(-180deg); border-radius: 60% 40% 45% 55% / 55% 45% 50% 50%; }
+}
+@keyframes orb-glow {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
+}
+.orb-blob-1 { animation: orb-blob-1 9s ease-in-out infinite; }
+.orb-blob-2 { animation: orb-blob-2 13s ease-in-out infinite; }
+.orb-glow { animation: orb-glow 3.5s ease-in-out infinite; }
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 45s linear infinite; }
