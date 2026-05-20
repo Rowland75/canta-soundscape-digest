@@ -1,41 +1,61 @@
 import { useVoice } from "@/lib/canta-store";
-import { Mic, X, Send, Sparkles } from "lucide-react";
+import { Mic, MicOff, X, Send, Keyboard, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SUGGESTIONS = [
   "Brief me on Atlas Ridge.",
-  "Read the full Crownline Legal contract.",
-  "What changed in the Meridian Works budget?",
-  "Summarize the Northbridge investor thread.",
-  "Unsubscribe from the NovaAxis weekly digest.",
+  "Read the Crownline contract.",
+  "What changed in the Meridian budget?",
+  "Summarize the Northbridge thread.",
+  "Unsubscribe NovaAxis digest.",
   "Switch to Strategic Intelligence.",
 ];
 
 const respond = (q: string): { text: string; confirm?: string } => {
   const t = q.toLowerCase();
   if (t.includes("atlas ridge")) return { text: "Atlas Ridge phase 2 validation cleared 14 of 16 listings. Two flagged for resurvey by May 16. No budget impact. Maya closes out Friday." };
-  if (t.includes("crownline")) return { text: "The revised Crownline Legal contract has three changes: net-90 payment terms (was net-30), liability cap removed, and tightened hem tolerance. I recommend pushing back on net-90 and reinstating the cap." };
-  if (t.includes("meridian")) return { text: "Meridian Works Q2 budget tightened 6% vs Q1. Marketing -$22k, Engineering +$28k, Travel -$6k. Risk: marketing underspend may impact Q3 pipeline." };
-  if (t.includes("northbridge")) return { text: "Northbridge Capital confirmed partner-level interest in leading the Series A. They want a working session Thursday and have asked for updated burn and the 18-month plan by EOD Tuesday." };
-  if (t.includes("unsubscribe") || t.includes("novaaxis")) return { text: "NovaAxis weekly digest: low engagement, last opened 3 weeks ago.", confirm: "Unsubscribe and clear backlog?" };
-  if (t.includes("strategic")) return { text: "Switched to Strategic Intelligence channel. 4 briefings queued." };
-  if (t.includes("burn")) return { text: "Burn is $206k/month, up 12% MoM. Runway is 14.2 months. Main drivers: vector DB scaling (+$11k) and one new ML hire (+$9k)." };
-  return { text: "I can brief you on any project, read documents aloud, manage subscriptions, or draft replies. Try one of the suggestions below." };
+  if (t.includes("crownline")) return { text: "The revised Crownline Legal contract has three changes: net-90 payment terms, liability cap removed, and tightened hem tolerance. I recommend pushing back on net-90 and reinstating the cap." };
+  if (t.includes("meridian")) return { text: "Meridian Works Q2 budget tightened 6 percent versus Q1. Marketing down 22k, Engineering up 28k, Travel down 6k. Risk: marketing underspend may impact Q3 pipeline." };
+  if (t.includes("northbridge")) return { text: "Northbridge Capital confirmed partner-level interest in leading the Series A. They want a working session Thursday and updated burn plus the 18-month plan by end of day Tuesday." };
+  if (t.includes("unsubscribe") || t.includes("novaaxis")) return { text: "NovaAxis weekly digest: low engagement, last opened three weeks ago.", confirm: "Unsubscribe and clear backlog?" };
+  if (t.includes("strategic")) return { text: "Switched to Strategic Intelligence channel. Four briefings queued." };
+  if (t.includes("burn")) return { text: "Burn is 206k a month, up 12 percent month over month. Runway is 14.2 months. Main drivers: vector DB scaling and one new ML hire." };
+  return { text: "I can brief you on any project, read documents aloud, manage subscriptions, or draft replies. Try one of the suggestions." };
 };
+
+type Turn = { q: string; a: string; confirm?: string; resolved?: boolean };
 
 export const VoiceOverlay = () => {
   const { open, setOpen } = useVoice();
   const [input, setInput] = useState("");
-  const [log, setLog] = useState<{ q: string; a: string; confirm?: string; resolved?: boolean }[]>([]);
+  const [keyboard, setKeyboard] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [log, setLog] = useState<Turn[]>([]);
+  const [speaking, setSpeaking] = useState(false);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      // reset on close
+      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); }, 300);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
+  }, [log, speaking]);
 
   const send = (q: string) => {
     if (!q.trim()) return;
     const r = respond(q);
     setLog((l) => [...l, { q, a: r.text, confirm: r.confirm }]);
     setInput("");
+    setSpeaking(true);
+    // simulate speaking duration
+    window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
   };
 
   const resolve = (i: number, ok: boolean) => {
@@ -47,62 +67,146 @@ export const VoiceOverlay = () => {
       {open && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm grid place-items-end sm:place-items-center p-0 sm:p-6"
-          onClick={() => setOpen(false)}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 z-50 bg-gradient-warm overflow-hidden"
         >
-          <motion.div
-            initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-            transition={{ type: "spring", damping: 24, stiffness: 280 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl shadow-elevated border border-border/60 overflow-hidden flex flex-col max-h-[85vh]"
-          >
-            <div className="bg-gradient-hero p-6 text-primary-foreground relative">
-              <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="absolute top-3 right-3 h-8 w-8 text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"><X className="h-4 w-4" /></Button>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-white/20 grid place-items-center animate-pulse-ring">
-                  <Mic className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-widest opacity-80">Listening</p>
-                  <p className="font-display text-2xl">Say "Canta…"</p>
-                </div>
-              </div>
+          {/* Ambient blurs */}
+          <div className="pointer-events-none absolute -top-40 -left-40 h-[40rem] w-[40rem] rounded-full bg-accent/60 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-40 -right-40 h-[36rem] w-[36rem] rounded-full bg-gold-soft/40 blur-3xl" />
+
+          {/* Top bar */}
+          <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <p className="text-[11px] tracking-[0.25em] uppercase text-muted-foreground">
+                {speaking ? "Canta · speaking" : muted ? "Canta · muted" : "Canta · listening"}
+              </p>
+            </div>
+            <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 hover:bg-card/60">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Orb stage */}
+          <div className="relative z-10 grid place-items-center mt-6 sm:mt-10">
+            <div className="relative h-64 w-64 sm:h-80 sm:w-80">
+              {/* outer glow */}
+              <div className="absolute inset-0 rounded-full bg-primary-glow/30 blur-2xl orb-glow" style={{ animationDuration: speaking ? "1.2s" : "3.5s" }} />
+              {/* blob layers */}
+              <div
+                className="absolute top-1/2 left-1/2 h-56 w-56 sm:h-72 sm:w-72 bg-gradient-orb orb-blob-1 shadow-elevated"
+                style={{ animationDuration: speaking ? "3s" : "9s" }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 h-44 w-44 sm:h-56 sm:w-56 orb-blob-2 mix-blend-screen opacity-80"
+                style={{ background: "radial-gradient(circle at 60% 40%, hsl(280 80% 70% / .9), hsl(220 70% 30% / .3) 70%)", animationDuration: speaking ? "4s" : "13s" }}
+              />
+              {/* center mic */}
+              <button
+                onClick={() => setMuted(!muted)}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-14 w-14 rounded-full glass-dark text-primary-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform"
+                aria-label={muted ? "Unmute" : "Mute"}
+              >
+                {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {log.length === 0 && (
-                <div className="text-center py-6 space-y-3">
-                  <Sparkles className="h-6 w-6 mx-auto text-primary" />
-                  <p className="text-sm text-muted-foreground">Try a command</p>
-                </div>
-              )}
-              {log.map((m, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex justify-end"><div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 text-sm max-w-[85%]">{m.q}</div></div>
-                  <div className="flex justify-start"><div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[85%]">{m.a}</div></div>
-                  {m.confirm && !m.resolved && (
-                    <div className="flex gap-2 ml-2">
-                      <p className="text-xs text-muted-foreground self-center">{m.confirm}</p>
-                      <Button size="sm" variant="outline" onClick={() => resolve(i, false)}>Cancel</Button>
-                      <Button size="sm" onClick={() => resolve(i, true)} className="bg-gradient-hero">Confirm</Button>
-                    </div>
-                  )}
-                </div>
+            {/* Live waveform when speaking */}
+            <div className="h-6 mt-4 flex items-end justify-center gap-1 text-primary">
+              {speaking && Array.from({ length: 24 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="w-[3px] rounded-full bg-current"
+                  style={{
+                    height: `${8 + Math.abs(Math.sin((i + 1) * 0.7)) * 18}px`,
+                    animation: `wave ${0.6 + (i % 5) * 0.12}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.04}s`,
+                  }}
+                />
               ))}
             </div>
 
-            <div className="p-3 border-t border-border/60">
-              <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+            <p className="serif-italic text-2xl sm:text-3xl mt-4 text-center px-6">
+              {log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
+            </p>
+          </div>
+
+          {/* Transcript */}
+          <div
+            ref={transcriptRef}
+            className="relative z-10 max-w-xl mx-auto mt-6 px-5 sm:px-0 max-h-[28vh] overflow-y-auto space-y-3"
+          >
+            {log.length === 0 && (
+              <div className="text-center text-xs tracking-widest uppercase text-muted-foreground flex items-center justify-center gap-2">
+                <Sparkles className="h-3.5 w-3.5" /> try a command below
+              </div>
+            )}
+            {log.map((m, i) => (
+              <div key={i} className="space-y-1.5 animate-fade-up">
+                <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground text-right">you</p>
+                <div className="ml-auto max-w-[85%] bg-card/70 backdrop-blur rounded-2xl rounded-tr-sm px-4 py-2 text-sm text-right border border-border/60">{m.q}</div>
+                <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">canta</p>
+                <div className="mr-auto max-w-[90%] serif-italic text-[17px] leading-snug text-foreground">{m.a}</div>
+                {m.confirm && !m.resolved && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <p className="text-xs text-muted-foreground">{m.confirm}</p>
+                    <Button size="sm" variant="outline" onClick={() => resolve(i, false)} className="rounded-full h-8">Cancel</Button>
+                    <Button size="sm" onClick={() => resolve(i, true)} className="rounded-full h-8 bg-primary text-primary-foreground">Confirm</Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom control dock */}
+          <div className="absolute bottom-0 inset-x-0 z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+18px)] pt-4">
+            <div className="max-w-xl mx-auto">
+              {/* Suggestions */}
+              <div className="flex gap-1.5 overflow-x-auto pb-3 scrollbar-none -mx-1 px-1">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => send(s)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-accent text-accent-foreground hover:bg-accent/70 transition-colors">{s}</button>
+                  <button key={s} onClick={() => send(s)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-card/70 backdrop-blur border border-border/60 text-foreground hover:bg-card transition-colors">{s}</button>
                 ))}
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2">
-                <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a command…" className="rounded-xl" />
-                <Button type="submit" size="icon" className="bg-gradient-hero shadow-glow shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
-              </form>
+
+              {keyboard ? (
+                <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2 items-center rounded-full glass-dark p-1.5 pl-4 shadow-elevated">
+                  <Input
+                    autoFocus
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type a command…"
+                    className="border-0 bg-transparent text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-0 h-10"
+                  />
+                  <Button type="submit" size="icon" className="rounded-full h-10 w-10 bg-card text-foreground hover:bg-card/80 shrink-0"><Send className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setKeyboard(false)} className="rounded-full h-10 w-10 text-primary-foreground hover:bg-white/10 shrink-0"><X className="h-4 w-4" /></Button>
+                </form>
+              ) : (
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => setKeyboard(true)}
+                    className="h-14 w-14 rounded-full glass border border-border/60 grid place-items-center text-foreground hover:bg-card transition-colors"
+                    aria-label="Type"
+                  >
+                    <Keyboard className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setMuted(!muted)}
+                    className="h-16 w-16 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform animate-pulse-ring"
+                    aria-label={muted ? "Unmute" : "Mute"}
+                  >
+                    {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                  </button>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="h-14 w-14 rounded-full bg-destructive text-destructive-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform"
+                    aria-label="End"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -115,7 +219,7 @@ export const VoiceFAB = () => {
   return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-gradient-hero text-primary-foreground shadow-glow grid place-items-center animate-pulse-ring hover:scale-105 transition-transform"
+      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-elevated grid place-items-center animate-pulse-ring hover:scale-105 transition-transform"
       aria-label="Open Canta voice agent"
     >
       <Mic className="h-6 w-6" />
