@@ -110,8 +110,13 @@
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
   }
+  .glass-navy {
+    background: hsl(220 55% 22% / 0.78);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
   .glass-dark {
-    background: hsl(220 50% 10% / 0.82);
+    background: hsl(220 55% 22% / 0.78);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
   }
