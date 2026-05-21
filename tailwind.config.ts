@@ -57,6 +57,15 @@ export default {
           foreground: "hsl(var(--success-foreground))",
           soft: "hsl(var(--success-soft))",
         },
+        canta: {
+          white: "hsl(var(--canta-white))",
+          blue: "hsl(var(--canta-blue))",
+          green: "hsl(var(--canta-green))",
+          gold: "hsl(var(--canta-gold))",
+          violet: "hsl(var(--canta-violet))",
+          yellow: "hsl(var(--canta-yellow))",
+          pink: "hsl(var(--canta-pink))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
