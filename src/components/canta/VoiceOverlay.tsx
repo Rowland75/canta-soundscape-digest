@@ -204,3 +204,45 @@ export const VoiceFAB = () => {
     </button>
   );
 };
+
+// Neural Expressive aurora — Gemini Live-inspired fullscreen reactive background.
+// Seven blobs drifting in the Canta palette: white, blue, green, gold, violet, yellow, pink.
+// Speed and opacity respond to speaking / muted state.
+const AURORA_BLOBS = [
+  { color: "hsl(0 0% 100% / 0.85)",    anim: "neural-1", size: "70vmax", top: "-20%", left: "-15%" },
+  { color: "hsl(218 95% 62% / 0.65)",  anim: "neural-2", size: "62vmax", top: "-10%", left: "35%"  }, // blue
+  { color: "hsl(152 65% 55% / 0.55)",  anim: "neural-3", size: "60vmax", top: "30%",  left: "-25%" }, // green
+  { color: "hsl(42 92% 60% / 0.60)",   anim: "neural-4", size: "55vmax", top: "45%",  left: "40%"  }, // gold
+  { color: "hsl(272 80% 68% / 0.60)",  anim: "neural-5", size: "65vmax", top: "10%",  left: "10%"  }, // violet
+  { color: "hsl(50 95% 65% / 0.55)",   anim: "neural-6", size: "50vmax", top: "55%",  left: "10%"  }, // yellow
+  { color: "hsl(330 90% 75% / 0.55)",  anim: "neural-7", size: "58vmax", top: "-5%",  left: "55%"  }, // pink
+];
+
+const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }) => {
+  const baseDur = muted ? 28 : speaking ? 9 : 18;
+  return (
+    <div className="aurora-stage" aria-hidden>
+      {AURORA_BLOBS.map((b, i) => (
+        <div
+          key={i}
+          className="aurora-blob"
+          style={{
+            background: b.color,
+            width: b.size,
+            height: b.size,
+            top: b.top,
+            left: b.left,
+            animation: `${b.anim} ${baseDur + i * 1.6}s ease-in-out infinite`,
+            animationDelay: `${i * -2.3}s`,
+            opacity: muted ? 0.55 : speaking ? 0.95 : 0.8,
+            transition: "opacity 600ms ease",
+          }}
+        />
+      ))}
+      {/* Soft top/bottom vignette to keep text readable */}
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/60 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background/70 to-transparent" />
+    </div>
+  );
+};
+
