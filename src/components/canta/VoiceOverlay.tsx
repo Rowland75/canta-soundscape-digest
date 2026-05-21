@@ -176,7 +176,7 @@ export const VoiceOverlay = () => {
                   </button>
                   <button
                     onClick={() => setOpen(false)}
-                    className="h-14 w-14 rounded-full bg-destructive text-destructive-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform"
+                    className="h-14 w-14 rounded-full glass border border-border/60 grid place-items-center text-foreground hover:bg-card transition-colors"
                     aria-label="End"
                   >
                     <X className="h-5 w-5" />
