@@ -67,69 +67,47 @@ export const VoiceOverlay = () => {
       {open && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-50 bg-gradient-warm overflow-hidden"
+          transition={{ duration: 0.35 }}
+          className="fixed inset-0 z-50 overflow-hidden text-foreground"
         >
-          {/* Ambient blurs */}
-          <div className="pointer-events-none absolute -top-40 -left-40 h-[40rem] w-[40rem] rounded-full bg-accent/60 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-40 -right-40 h-[36rem] w-[36rem] rounded-full bg-gold-soft/40 blur-3xl" />
+          {/* Neural Expressive aurora — fullscreen, palette: white/blue/green/gold/violet/yellow/pink */}
+          <NeuralAurora speaking={speaking} muted={muted} />
 
           {/* Top bar */}
           <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              <p className="text-[11px] tracking-[0.25em] uppercase text-muted-foreground">
+              <p className="text-[11px] tracking-[0.25em] uppercase text-foreground/70">
                 {speaking ? "Canta · speaking" : muted ? "Canta · muted" : "Canta · listening"}
               </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 hover:bg-card/60">
+            <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 text-foreground hover:bg-card/60">
               <X className="h-5 w-5" />
             </Button>
           </div>
 
-          {/* Orb stage */}
-          <div className="relative z-10 grid place-items-center mt-6 sm:mt-10">
-            <div className="relative h-64 w-64 sm:h-80 sm:w-80">
-              {/* outer glow */}
-              <div className="absolute inset-0 rounded-full bg-primary-glow/30 blur-2xl orb-glow" style={{ animationDuration: speaking ? "1.2s" : "3.5s" }} />
-              {/* blob layers */}
-              <div
-                className="absolute top-1/2 left-1/2 h-56 w-56 sm:h-72 sm:w-72 bg-gradient-orb orb-blob-1 shadow-elevated"
-                style={{ animationDuration: speaking ? "3s" : "9s" }}
-              />
-              <div
-                className="absolute top-1/2 left-1/2 h-44 w-44 sm:h-56 sm:w-56 orb-blob-2 mix-blend-screen opacity-80"
-                style={{ background: "radial-gradient(circle at 60% 40%, hsl(280 80% 70% / .9), hsl(220 70% 30% / .3) 70%)", animationDuration: speaking ? "4s" : "13s" }}
-              />
-              {/* center mic */}
-              <button
-                onClick={() => setMuted(!muted)}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-14 w-14 rounded-full glass-dark text-primary-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform"
-                aria-label={muted ? "Unmute" : "Mute"}
-              >
-                {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-              </button>
-            </div>
-
+          {/* Center stage — minimal, the whole screen is the orb */}
+          <div className="relative z-10 grid place-items-center mt-10 sm:mt-16">
             {/* Live waveform when speaking */}
-            <div className="h-6 mt-4 flex items-end justify-center gap-1 text-primary">
-              {speaking && Array.from({ length: 24 }).map((_, i) => (
+            <div className="h-8 flex items-end justify-center gap-1 text-primary">
+              {speaking && Array.from({ length: 28 }).map((_, i) => (
                 <span
                   key={i}
                   className="w-[3px] rounded-full bg-current"
                   style={{
-                    height: `${8 + Math.abs(Math.sin((i + 1) * 0.7)) * 18}px`,
-                    animation: `wave ${0.6 + (i % 5) * 0.12}s ease-in-out infinite`,
-                    animationDelay: `${i * 0.04}s`,
+                    height: `${10 + Math.abs(Math.sin((i + 1) * 0.7)) * 22}px`,
+                    animation: `wave ${0.55 + (i % 5) * 0.11}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.035}s`,
                   }}
                 />
               ))}
             </div>
 
-            <p className="serif-italic text-2xl sm:text-3xl mt-4 text-center px-6">
+            <p className="serif-italic text-2xl sm:text-3xl mt-5 text-center px-6 text-foreground">
               {log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
             </p>
           </div>
+
 
           {/* Transcript */}
           <div
@@ -198,7 +176,7 @@ export const VoiceOverlay = () => {
                   </button>
                   <button
                     onClick={() => setOpen(false)}
-                    className="h-14 w-14 rounded-full bg-destructive text-destructive-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform"
+                    className="h-14 w-14 rounded-full glass border border-border/60 grid place-items-center text-foreground hover:bg-card transition-colors"
                     aria-label="End"
                   >
                     <X className="h-5 w-5" />
@@ -226,3 +204,45 @@ export const VoiceFAB = () => {
     </button>
   );
 };
+
+// Neural Expressive aurora — Gemini Live-inspired fullscreen reactive background.
+// Seven blobs drifting in the Canta palette: white, blue, green, gold, violet, yellow, pink.
+// Speed and opacity respond to speaking / muted state.
+const AURORA_BLOBS = [
+  { color: "hsl(0 0% 100% / 0.85)",    anim: "neural-1", size: "70vmax", top: "-20%", left: "-15%" },
+  { color: "hsl(218 95% 62% / 0.65)",  anim: "neural-2", size: "62vmax", top: "-10%", left: "35%"  }, // blue
+  { color: "hsl(152 65% 55% / 0.55)",  anim: "neural-3", size: "60vmax", top: "30%",  left: "-25%" }, // green
+  { color: "hsl(42 92% 60% / 0.60)",   anim: "neural-4", size: "55vmax", top: "45%",  left: "40%"  }, // gold
+  { color: "hsl(272 80% 68% / 0.60)",  anim: "neural-5", size: "65vmax", top: "10%",  left: "10%"  }, // violet
+  { color: "hsl(50 95% 65% / 0.55)",   anim: "neural-6", size: "50vmax", top: "55%",  left: "10%"  }, // yellow
+  { color: "hsl(330 90% 75% / 0.55)",  anim: "neural-7", size: "58vmax", top: "-5%",  left: "55%"  }, // pink
+];
+
+const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }) => {
+  const baseDur = muted ? 28 : speaking ? 9 : 18;
+  return (
+    <div className="aurora-stage" aria-hidden>
+      {AURORA_BLOBS.map((b, i) => (
+        <div
+          key={i}
+          className="aurora-blob"
+          style={{
+            background: b.color,
+            width: b.size,
+            height: b.size,
+            top: b.top,
+            left: b.left,
+            animation: `${b.anim} ${baseDur + i * 1.6}s ease-in-out infinite`,
+            animationDelay: `${i * -2.3}s`,
+            opacity: muted ? 0.55 : speaking ? 0.95 : 0.8,
+            transition: "opacity 600ms ease",
+          }}
+        />
+      ))}
+      {/* Soft top/bottom vignette to keep text readable */}
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/60 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background/70 to-transparent" />
+    </div>
+  );
+};
+
