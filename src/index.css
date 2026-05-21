@@ -45,18 +45,34 @@
 
     --radius: 1.2rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(220 50% 10%) 0%, hsl(244 40% 22%) 100%);
-    --gradient-violet: linear-gradient(135deg, hsl(244 50% 45%), hsl(220 50% 18%));
+    /* Canta vibrant palette — Gemini Live inspired. No black, no red. */
+    --canta-white: 0 0% 100%;
+    --canta-blue: 218 95% 62%;
+    --canta-green: 152 65% 50%;
+    --canta-gold: 42 92% 58%;
+    --canta-violet: 272 80% 65%;
+    --canta-yellow: 50 95% 62%;
+    --canta-pink: 330 90% 72%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(220 55% 18%) 0%, hsl(244 60% 35%) 60%, hsl(272 70% 50%) 100%);
+    --gradient-violet: linear-gradient(135deg, hsl(272 75% 55%), hsl(244 65% 40%));
     --gradient-soft: linear-gradient(180deg, hsl(24 28% 90%), hsl(24 20% 84%));
-    --gradient-gold: linear-gradient(135deg, hsl(42 75% 58%), hsl(34 65% 46%));
+    --gradient-gold: linear-gradient(135deg, hsl(42 95% 62%), hsl(34 80% 50%));
     --gradient-card: linear-gradient(180deg, hsl(30 35% 97%), hsl(28 28% 93%));
     --gradient-warm: radial-gradient(ellipse at top left, hsl(28 40% 92%) 0%, hsl(22 20% 84%) 55%, hsl(20 18% 78%) 100%);
-    --gradient-orb: radial-gradient(circle at 30% 30%, hsl(244 80% 70%) 0%, hsl(280 70% 55%) 35%, hsl(220 60% 25%) 75%, hsl(220 50% 10%) 100%);
+    --gradient-orb: radial-gradient(circle at 30% 30%, hsl(218 95% 70%) 0%, hsl(272 80% 60%) 35%, hsl(330 80% 65%) 70%, hsl(42 90% 60%) 100%);
+    --gradient-spectrum: linear-gradient(120deg, hsl(218 95% 62%) 0%, hsl(272 80% 65%) 30%, hsl(330 90% 72%) 55%, hsl(42 92% 58%) 78%, hsl(152 65% 55%) 100%);
+    --gradient-canta-soft: radial-gradient(ellipse 80% 50% at 20% 0%, hsl(218 95% 62% / 0.18) 0%, transparent 60%),
+                            radial-gradient(ellipse 70% 50% at 90% 10%, hsl(272 80% 65% / 0.18) 0%, transparent 60%),
+                            radial-gradient(ellipse 60% 45% at 80% 95%, hsl(42 92% 58% / 0.18) 0%, transparent 60%),
+                            radial-gradient(ellipse 60% 45% at 10% 90%, hsl(152 65% 55% / 0.16) 0%, transparent 60%),
+                            radial-gradient(ellipse 50% 35% at 50% 50%, hsl(330 90% 72% / 0.10) 0%, transparent 70%);
 
-    --shadow-glow: 0 20px 60px -20px hsl(220 50% 10% / 0.4);
+    --shadow-glow: 0 20px 60px -20px hsl(244 60% 50% / 0.45);
     --shadow-card: 0 1px 2px hsl(24 30% 20% / 0.06), 0 10px 30px -12px hsl(24 30% 20% / 0.14);
     --shadow-soft: 0 1px 3px hsl(24 30% 20% / 0.06);
-    --shadow-elevated: 0 14px 50px -14px hsl(24 30% 15% / 0.24);
+    --shadow-elevated: 0 14px 50px -14px hsl(244 50% 30% / 0.28);
+
 
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 
