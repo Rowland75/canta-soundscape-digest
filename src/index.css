@@ -109,6 +109,17 @@
   .bg-gradient-card { background: var(--gradient-card); }
   .bg-gradient-warm { background: var(--gradient-warm); }
   .bg-gradient-orb { background: var(--gradient-orb); }
+  .bg-gradient-spectrum { background: var(--gradient-spectrum); }
+  .bg-canta-canvas { background-color: hsl(var(--background)); background-image: var(--gradient-canta-soft); }
+
+  .text-spectrum {
+    background: var(--gradient-spectrum);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .ring-spectrum { box-shadow: 0 0 0 1px hsl(var(--canta-violet) / 0.35), 0 12px 40px -12px hsl(var(--canta-blue) / 0.35); }
 
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-card { box-shadow: var(--shadow-card); }
