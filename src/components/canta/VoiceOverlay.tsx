@@ -1,5 +1,5 @@
-import { useVoice } from "@/lib/canta-store";
-import { Mic, MicOff, X, Send, Keyboard, Sparkles } from "lucide-react";
+import { useVoice, usePlayer } from "@/lib/canta-store";
+import { Mic, MicOff, X, Send, Keyboard, Sparkles, Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
@@ -30,17 +30,47 @@ type Turn = { q: string; a: string; confirm?: string; resolved?: boolean };
 
 export const VoiceOverlay = () => {
   const { open, setOpen } = useVoice();
+  const player = usePlayer();
   const [input, setInput] = useState("");
   const [keyboard, setKeyboard] = useState(false);
   const [muted, setMuted] = useState(false);
   const [log, setLog] = useState<Turn[]>([]);
   const [speaking, setSpeaking] = useState(false);
+  const [interrupted, setInterrupted] = useState(false);
+  const speakTimer = useRef<number | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+
+  const clearSpeakTimer = () => {
+    if (speakTimer.current) {
+      window.clearTimeout(speakTimer.current);
+      speakTimer.current = null;
+    }
+  };
+
+  // Cancel any ongoing Canta response immediately (and pause any briefing playback).
+  const interrupt = () => {
+    let didInterrupt = false;
+    if (speaking) {
+      clearSpeakTimer();
+      setSpeaking(false);
+      setLog((l) => l.map((m, i) => i === l.length - 1 ? { ...m, a: m.a.replace(/ — interrupted\.$/, "") + " — interrupted." } : m));
+      didInterrupt = true;
+    }
+    if (player.playing) {
+      player.pause();
+      didInterrupt = true;
+    }
+    if (didInterrupt) {
+      setInterrupted(true);
+      window.setTimeout(() => setInterrupted(false), 700);
+      if (navigator.vibrate) navigator.vibrate(12);
+    }
+  };
 
   useEffect(() => {
     if (!open) {
-      // reset on close
-      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); }, 300);
+      clearSpeakTimer();
+      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); setInterrupted(false); }, 300);
     }
   }, [open]);
 
@@ -50,12 +80,13 @@ export const VoiceOverlay = () => {
 
   const send = (q: string) => {
     if (!q.trim()) return;
+    // Speaking again interrupts the current response / any playing briefing
+    interrupt();
     const r = respond(q);
     setLog((l) => [...l, { q, a: r.text, confirm: r.confirm }]);
     setInput("");
     setSpeaking(true);
-    // simulate speaking duration
-    window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
+    speakTimer.current = window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
   };
 
   const resolve = (i: number, ok: boolean) => {
@@ -71,14 +102,14 @@ export const VoiceOverlay = () => {
           className="fixed inset-0 z-50 overflow-hidden text-foreground"
         >
           {/* Neural Expressive aurora — fullscreen, palette: white/blue/green/gold/violet/yellow/pink */}
-          <NeuralAurora speaking={speaking} muted={muted} />
+          <NeuralAurora speaking={speaking} muted={muted} interrupted={interrupted} />
 
           {/* Top bar */}
           <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className={`h-2 w-2 rounded-full ${interrupted ? "bg-canta-pink" : "bg-success"} animate-pulse`} />
               <p className="text-[11px] tracking-[0.25em] uppercase text-foreground/70">
-                {speaking ? "Canta · speaking" : muted ? "Canta · muted" : "Canta · listening"}
+                {interrupted ? "Canta · interrupted" : speaking ? "Canta · speaking — tap to interrupt" : muted ? "Canta · muted" : "Canta · listening"}
               </p>
             </div>
             <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 text-foreground hover:bg-card/60">
@@ -86,9 +117,13 @@ export const VoiceOverlay = () => {
             </Button>
           </div>
 
-          {/* Center stage — minimal, the whole screen is the orb */}
-          <div className="relative z-10 grid place-items-center mt-10 sm:mt-16">
-            {/* Live waveform when speaking */}
+          {/* Center stage — minimal, the whole screen is the orb. Tap to interrupt when speaking. */}
+          <button
+            type="button"
+            onClick={() => { if (speaking || player.playing) interrupt(); }}
+            className="relative z-10 grid place-items-center mt-10 sm:mt-16 w-full focus:outline-none"
+            aria-label={speaking ? "Interrupt Canta" : "Canta status"}
+          >
             <div className="h-8 flex items-end justify-center gap-1 text-primary">
               {speaking && Array.from({ length: 28 }).map((_, i) => (
                 <span
@@ -104,9 +139,14 @@ export const VoiceOverlay = () => {
             </div>
 
             <p className="serif-italic text-2xl sm:text-3xl mt-5 text-center px-6 text-foreground">
-              {log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
+              {interrupted ? "Okay — go ahead." : log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
             </p>
-          </div>
+            {(speaking || player.playing) && !interrupted && (
+              <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] tracking-[0.22em] uppercase text-muted-foreground">
+                <Hand className="h-3 w-3" /> tap or speak to interrupt
+              </span>
+            )}
+          </button>
 
 
           {/* Transcript */}
@@ -168,11 +208,18 @@ export const VoiceOverlay = () => {
                     <Keyboard className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={() => setMuted(!muted)}
-                    className="h-16 w-16 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform animate-pulse-ring"
-                    aria-label={muted ? "Unmute" : "Mute"}
+                    onClick={() => {
+                      if (speaking || player.playing) { interrupt(); return; }
+                      setMuted(!muted);
+                    }}
+                    className={`h-16 w-16 rounded-full grid place-items-center shadow-elevated hover:scale-105 transition-all ${
+                      speaking || player.playing
+                        ? "bg-gradient-spectrum text-primary-foreground scale-105"
+                        : "bg-primary text-primary-foreground animate-pulse-ring"
+                    }`}
+                    aria-label={speaking || player.playing ? "Interrupt" : muted ? "Unmute" : "Mute"}
                   >
-                    {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                    {speaking || player.playing ? <Hand className="h-6 w-6" /> : muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
                   </button>
                   <button
                     onClick={() => setOpen(false)}
@@ -218,8 +265,9 @@ const AURORA_BLOBS = [
   { color: "hsl(330 90% 75% / 0.55)",  anim: "neural-7", size: "58vmax", top: "-5%",  left: "55%"  }, // pink
 ];
 
-const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }) => {
-  const baseDur = muted ? 28 : speaking ? 9 : 18;
+const NeuralAurora = ({ speaking, muted, interrupted }: { speaking: boolean; muted: boolean; interrupted: boolean }) => {
+  const baseDur = interrupted ? 4 : muted ? 28 : speaking ? 9 : 18;
+  const op = interrupted ? 1 : muted ? 0.55 : speaking ? 0.95 : 0.8;
   return (
     <div className="aurora-stage" aria-hidden>
       {AURORA_BLOBS.map((b, i) => (
@@ -234,12 +282,12 @@ const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }
             left: b.left,
             animation: `${b.anim} ${baseDur + i * 1.6}s ease-in-out infinite`,
             animationDelay: `${i * -2.3}s`,
-            opacity: muted ? 0.55 : speaking ? 0.95 : 0.8,
-            transition: "opacity 600ms ease",
+            opacity: op,
+            transform: interrupted ? "scale(1.15)" : "scale(1)",
+            transition: "opacity 500ms ease, transform 600ms ease",
           }}
         />
       ))}
-      {/* Soft top/bottom vignette to keep text readable */}
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/60 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background/70 to-transparent" />
     </div>
