@@ -152,6 +152,41 @@
     font-style: italic;
     font-weight: 400;
   }
+
+  /* Spectrum surface — translucent card with a vibrant top accent line */
+  .surface-spectrum {
+    position: relative;
+    background:
+      linear-gradient(180deg, hsl(var(--card) / 0.85), hsl(var(--card) / 0.7)),
+      var(--gradient-canta-soft);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+  .surface-spectrum::before {
+    content: "";
+    position: absolute; inset: 0 0 auto 0; height: 2px;
+    background: var(--gradient-spectrum);
+    opacity: 0.85;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  .border-spectrum {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      var(--gradient-spectrum) border-box;
+  }
+
+  .shadow-spectrum {
+    box-shadow:
+      0 1px 2px hsl(244 50% 30% / 0.10),
+      0 12px 36px -14px hsl(var(--canta-violet) / 0.45),
+      0 18px 60px -24px hsl(var(--canta-blue) / 0.35);
+  }
+
+  .hover-glow { transition: box-shadow 250ms ease, transform 250ms ease; }
+  .hover-glow:hover { box-shadow: 0 10px 30px -10px hsl(var(--canta-violet) / 0.45); }
 }
 
 @keyframes pulse-ring {
