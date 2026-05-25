@@ -265,8 +265,9 @@ const AURORA_BLOBS = [
   { color: "hsl(330 90% 75% / 0.55)",  anim: "neural-7", size: "58vmax", top: "-5%",  left: "55%"  }, // pink
 ];
 
-const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }) => {
-  const baseDur = muted ? 28 : speaking ? 9 : 18;
+const NeuralAurora = ({ speaking, muted, interrupted }: { speaking: boolean; muted: boolean; interrupted: boolean }) => {
+  const baseDur = interrupted ? 4 : muted ? 28 : speaking ? 9 : 18;
+  const op = interrupted ? 1 : muted ? 0.55 : speaking ? 0.95 : 0.8;
   return (
     <div className="aurora-stage" aria-hidden>
       {AURORA_BLOBS.map((b, i) => (
@@ -281,12 +282,12 @@ const NeuralAurora = ({ speaking, muted }: { speaking: boolean; muted: boolean }
             left: b.left,
             animation: `${b.anim} ${baseDur + i * 1.6}s ease-in-out infinite`,
             animationDelay: `${i * -2.3}s`,
-            opacity: muted ? 0.55 : speaking ? 0.95 : 0.8,
-            transition: "opacity 600ms ease",
+            opacity: op,
+            transform: interrupted ? "scale(1.15)" : "scale(1)",
+            transition: "opacity 500ms ease, transform 600ms ease",
           }}
         />
       ))}
-      {/* Soft top/bottom vignette to keep text readable */}
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/60 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background/70 to-transparent" />
     </div>
