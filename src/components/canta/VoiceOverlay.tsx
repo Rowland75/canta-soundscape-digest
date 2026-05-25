@@ -117,9 +117,13 @@ export const VoiceOverlay = () => {
             </Button>
           </div>
 
-          {/* Center stage — minimal, the whole screen is the orb */}
-          <div className="relative z-10 grid place-items-center mt-10 sm:mt-16">
-            {/* Live waveform when speaking */}
+          {/* Center stage — minimal, the whole screen is the orb. Tap to interrupt when speaking. */}
+          <button
+            type="button"
+            onClick={() => { if (speaking || player.playing) interrupt(); }}
+            className="relative z-10 grid place-items-center mt-10 sm:mt-16 w-full focus:outline-none"
+            aria-label={speaking ? "Interrupt Canta" : "Canta status"}
+          >
             <div className="h-8 flex items-end justify-center gap-1 text-primary">
               {speaking && Array.from({ length: 28 }).map((_, i) => (
                 <span
@@ -135,9 +139,14 @@ export const VoiceOverlay = () => {
             </div>
 
             <p className="serif-italic text-2xl sm:text-3xl mt-5 text-center px-6 text-foreground">
-              {log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
+              {interrupted ? "Okay — go ahead." : log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
             </p>
-          </div>
+            {(speaking || player.playing) && !interrupted && (
+              <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] tracking-[0.22em] uppercase text-muted-foreground">
+                <Hand className="h-3 w-3" /> tap or speak to interrupt
+              </span>
+            )}
+          </button>
 
 
           {/* Transcript */}
