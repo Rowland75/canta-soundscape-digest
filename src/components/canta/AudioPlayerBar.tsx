@@ -135,7 +135,7 @@ export const AudioPlayerBar = () => {
           </div>
           <div className="flex items-center gap-1">
             <Button size="icon" variant="ghost" onClick={prev} className="h-9 w-9"><SkipBack className="h-4 w-4" /></Button>
-            <Button size="icon" onClick={toggle} className="h-10 w-10 rounded-full bg-gradient-hero text-primary-foreground shadow-glow hover:opacity-90">
+            <Button size="icon" onClick={toggle} className="h-10 w-10 rounded-full bg-gradient-spectrum text-primary-foreground shadow-spectrum hover:opacity-90">
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
             <Button size="icon" variant="ghost" onClick={next} className="h-9 w-9"><SkipForward className="h-4 w-4" /></Button>
