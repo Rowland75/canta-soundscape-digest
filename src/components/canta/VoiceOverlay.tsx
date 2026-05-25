@@ -30,17 +30,47 @@ type Turn = { q: string; a: string; confirm?: string; resolved?: boolean };
 
 export const VoiceOverlay = () => {
   const { open, setOpen } = useVoice();
+  const player = usePlayer();
   const [input, setInput] = useState("");
   const [keyboard, setKeyboard] = useState(false);
   const [muted, setMuted] = useState(false);
   const [log, setLog] = useState<Turn[]>([]);
   const [speaking, setSpeaking] = useState(false);
+  const [interrupted, setInterrupted] = useState(false);
+  const speakTimer = useRef<number | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+
+  const clearSpeakTimer = () => {
+    if (speakTimer.current) {
+      window.clearTimeout(speakTimer.current);
+      speakTimer.current = null;
+    }
+  };
+
+  // Cancel any ongoing Canta response immediately (and pause any briefing playback).
+  const interrupt = () => {
+    let didInterrupt = false;
+    if (speaking) {
+      clearSpeakTimer();
+      setSpeaking(false);
+      setLog((l) => l.map((m, i) => i === l.length - 1 ? { ...m, a: m.a.replace(/ — interrupted\.$/, "") + " — interrupted." } : m));
+      didInterrupt = true;
+    }
+    if (player.playing) {
+      player.pause();
+      didInterrupt = true;
+    }
+    if (didInterrupt) {
+      setInterrupted(true);
+      window.setTimeout(() => setInterrupted(false), 700);
+      if (navigator.vibrate) navigator.vibrate(12);
+    }
+  };
 
   useEffect(() => {
     if (!open) {
-      // reset on close
-      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); }, 300);
+      clearSpeakTimer();
+      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); setInterrupted(false); }, 300);
     }
   }, [open]);
 
@@ -50,12 +80,13 @@ export const VoiceOverlay = () => {
 
   const send = (q: string) => {
     if (!q.trim()) return;
+    // Speaking again interrupts the current response / any playing briefing
+    interrupt();
     const r = respond(q);
     setLog((l) => [...l, { q, a: r.text, confirm: r.confirm }]);
     setInput("");
     setSpeaking(true);
-    // simulate speaking duration
-    window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
+    speakTimer.current = window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
   };
 
   const resolve = (i: number, ok: boolean) => {
