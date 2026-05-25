@@ -1,5 +1,5 @@
-import { useVoice } from "@/lib/canta-store";
-import { Mic, MicOff, X, Send, Keyboard, Sparkles } from "lucide-react";
+import { useVoice, usePlayer } from "@/lib/canta-store";
+import { Mic, MicOff, X, Send, Keyboard, Sparkles, Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
