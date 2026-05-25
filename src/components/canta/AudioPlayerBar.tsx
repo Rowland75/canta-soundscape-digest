@@ -101,8 +101,8 @@ export const AudioPlayerBar = () => {
   return (
     <div className="fixed bottom-[68px] lg:bottom-4 inset-x-0 z-40 px-3 lg:left-60 animate-fade-up">
       <div
-        className={`mx-auto max-w-3xl glass border rounded-2xl shadow-elevated overflow-hidden touch-pan-y select-none ${
-          armed ? "border-primary/60 ring-2 ring-primary/30" : "border-border/60"
+        className={`mx-auto max-w-3xl surface-spectrum border rounded-2xl shadow-spectrum overflow-hidden touch-pan-y select-none ${
+          armed ? "border-canta-violet/70 ring-2 ring-canta-violet/40" : "border-border/60"
         }`}
         style={{
           transform: `translateX(${drag}px)`,
@@ -114,11 +114,11 @@ export const AudioPlayerBar = () => {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        <div className="h-1 bg-muted relative">
-          <div className="absolute inset-y-0 left-0 bg-gradient-hero transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-1 bg-muted/60 relative">
+          <div className="absolute inset-y-0 left-0 bg-gradient-spectrum transition-all" style={{ width: `${progress}%` }} />
         </div>
         <div className="p-3 flex items-center gap-3">
-          <div className="relative h-11 w-11 rounded-xl bg-gradient-hero grid place-items-center text-primary-foreground shrink-0 shadow-glow">
+          <div className="relative h-11 w-11 rounded-xl bg-gradient-spectrum grid place-items-center text-primary-foreground shrink-0 shadow-spectrum">
             {playing ? (
               <span className="flex items-end h-5">
                 <span className="audio-bar" style={{ animationDelay: "0s" }} />
@@ -135,7 +135,7 @@ export const AudioPlayerBar = () => {
           </div>
           <div className="flex items-center gap-1">
             <Button size="icon" variant="ghost" onClick={prev} className="h-9 w-9"><SkipBack className="h-4 w-4" /></Button>
-            <Button size="icon" onClick={toggle} className="h-10 w-10 rounded-full bg-gradient-hero text-primary-foreground shadow-glow hover:opacity-90">
+            <Button size="icon" onClick={toggle} className="h-10 w-10 rounded-full bg-gradient-spectrum text-primary-foreground shadow-spectrum hover:opacity-90">
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
             <Button size="icon" variant="ghost" onClick={next} className="h-9 w-9"><SkipForward className="h-4 w-4" /></Button>
