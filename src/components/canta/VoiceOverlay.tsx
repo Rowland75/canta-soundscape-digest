@@ -208,11 +208,18 @@ export const VoiceOverlay = () => {
                     <Keyboard className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={() => setMuted(!muted)}
-                    className="h-16 w-16 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-elevated hover:scale-105 transition-transform animate-pulse-ring"
-                    aria-label={muted ? "Unmute" : "Mute"}
+                    onClick={() => {
+                      if (speaking || player.playing) { interrupt(); return; }
+                      setMuted(!muted);
+                    }}
+                    className={`h-16 w-16 rounded-full grid place-items-center shadow-elevated hover:scale-105 transition-all ${
+                      speaking || player.playing
+                        ? "bg-gradient-spectrum text-primary-foreground scale-105"
+                        : "bg-primary text-primary-foreground animate-pulse-ring"
+                    }`}
+                    aria-label={speaking || player.playing ? "Interrupt" : muted ? "Unmute" : "Mute"}
                   >
-                    {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                    {speaking || player.playing ? <Hand className="h-6 w-6" /> : muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
                   </button>
                   <button
                     onClick={() => setOpen(false)}
