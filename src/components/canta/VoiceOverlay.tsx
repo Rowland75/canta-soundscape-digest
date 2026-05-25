@@ -102,14 +102,14 @@ export const VoiceOverlay = () => {
           className="fixed inset-0 z-50 overflow-hidden text-foreground"
         >
           {/* Neural Expressive aurora — fullscreen, palette: white/blue/green/gold/violet/yellow/pink */}
-          <NeuralAurora speaking={speaking} muted={muted} />
+          <NeuralAurora speaking={speaking} muted={muted} interrupted={interrupted} />
 
           {/* Top bar */}
           <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className={`h-2 w-2 rounded-full ${interrupted ? "bg-canta-pink" : "bg-success"} animate-pulse`} />
               <p className="text-[11px] tracking-[0.25em] uppercase text-foreground/70">
-                {speaking ? "Canta · speaking" : muted ? "Canta · muted" : "Canta · listening"}
+                {interrupted ? "Canta · interrupted" : speaking ? "Canta · speaking — tap to interrupt" : muted ? "Canta · muted" : "Canta · listening"}
               </p>
             </div>
             <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 text-foreground hover:bg-card/60">
