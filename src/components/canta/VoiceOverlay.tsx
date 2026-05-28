@@ -244,7 +244,7 @@ export const VoiceFAB = () => {
   return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-elevated grid place-items-center animate-pulse-ring hover:scale-105 transition-transform"
+      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:bg-primary/90 active:bg-primary shadow-elevated grid place-items-center animate-pulse-ring hover:scale-105 transition-transform"
       aria-label="Open Canta voice agent"
     >
       <Mic className="h-6 w-6" />
