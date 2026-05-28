@@ -77,13 +77,13 @@
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 
     --sidebar-background: 30 30% 96%;
-    --sidebar-foreground: 220 40% 14%;
-    --sidebar-primary: 220 50% 10%;
+    --sidebar-foreground: 222 70% 24%;
+    --sidebar-primary: 222 75% 26%;
     --sidebar-primary-foreground: 30 30% 96%;
     --sidebar-accent: 28 35% 92%;
-    --sidebar-accent-foreground: 220 45% 14%;
+    --sidebar-accent-foreground: 222 70% 24%;
     --sidebar-border: 24 14% 75%;
-    --sidebar-ring: 220 50% 10%;
+    --sidebar-ring: 222 75% 26%;
   }
 }
 
