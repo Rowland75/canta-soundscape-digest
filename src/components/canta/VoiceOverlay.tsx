@@ -1,240 +1,287 @@
-import { useVoice, usePlayer } from "@/lib/canta-store";
-import { Mic, MicOff, X, Send, Keyboard, Sparkles, Hand } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Mic, MicOff, Send, X, Hand, Pause, Play, Volume2, VolumeX, Check } from "lucide-react";
+import { toast } from "sonner";
+import { usePlayer, useVoice, useChannel, registerVoiceCanceller } from "@/lib/canta-store";
+import { VoiceEngine, VoiceStatus, STATUS_LABEL, respond, browserSpeaker } from "@/lib/voice-engine";
+import { SPLINE_SCENE_URL } from "@/lib/canta-config";
+import { useReducedMotion, useDocumentHidden } from "@/hooks/use-reduced-motion";
+import { cn } from "@/lib/utils";
+
+const SplineBackground = lazy(() => import("./SplineBackground"));
 
 const SUGGESTIONS = [
   "Brief me on Atlas Ridge.",
-  "Read the Crownline contract.",
-  "What changed in the Meridian budget?",
-  "Summarize the Northbridge thread.",
-  "Unsubscribe NovaAxis digest.",
+  "Read the full Crownline Legal contract.",
+  "What changed in the Meridian Works budget?",
+  "Summarize the Northbridge investor thread.",
+  "Unsubscribe from the NovaAxis weekly digest.",
   "Switch to Strategic Intelligence.",
 ];
 
-const respond = (q: string): { text: string; confirm?: string } => {
-  const t = q.toLowerCase();
-  if (t.includes("atlas ridge")) return { text: "Atlas Ridge phase 2 validation cleared 14 of 16 listings. Two flagged for resurvey by May 16. No budget impact. Maya closes out Friday." };
-  if (t.includes("crownline")) return { text: "The revised Crownline Legal contract has three changes: net-90 payment terms, liability cap removed, and tightened hem tolerance. I recommend pushing back on net-90 and reinstating the cap." };
-  if (t.includes("meridian")) return { text: "Meridian Works Q2 budget tightened 6 percent versus Q1. Marketing down 22k, Engineering up 28k, Travel down 6k. Risk: marketing underspend may impact Q3 pipeline." };
-  if (t.includes("northbridge")) return { text: "Northbridge Capital confirmed partner-level interest in leading the Series A. They want a working session Thursday and updated burn plus the 18-month plan by end of day Tuesday." };
-  if (t.includes("unsubscribe") || t.includes("novaaxis")) return { text: "NovaAxis weekly digest: low engagement, last opened three weeks ago.", confirm: "Unsubscribe and clear backlog?" };
-  if (t.includes("strategic")) return { text: "Switched to Strategic Intelligence channel. Four briefings queued." };
-  if (t.includes("burn")) return { text: "Burn is 206k a month, up 12 percent month over month. Runway is 14.2 months. Main drivers: vector DB scaling and one new ML hire." };
-  return { text: "I can brief you on any project, read documents aloud, manage subscriptions, or draft replies. Try one of the suggestions." };
-};
+type Msg = { id: number; role: "user" | "canta"; text: string; confirm?: string; resolved?: boolean };
 
-type Turn = { q: string; a: string; confirm?: string; resolved?: boolean };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getRecognitionCtor = (): any =>
+  typeof window === "undefined" ? null : (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
 
 export const VoiceOverlay = () => {
   const { open, setOpen } = useVoice();
-  const player = usePlayer();
+  const setChannel = useChannel((s) => s.setChannel);
+  const playerPlaying = usePlayer((s) => s.playing);
+  const nav = useNavigate();
+  const { pathname } = useLocation();
+  const reduced = useReducedMotion();
+  const hidden = useDocumentHidden();
+
+  const [status, setStatus] = useState<VoiceStatus>("idle");
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  const [keyboard, setKeyboard] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [log, setLog] = useState<Turn[]>([]);
-  const [speaking, setSpeaking] = useState(false);
-  const [interrupted, setInterrupted] = useState(false);
-  const speakTimer = useRef<number | null>(null);
-  const transcriptRef = useRef<HTMLDivElement>(null);
+  const [micNote, setMicNote] = useState<string | null>(null);
+  const [interim, setInterim] = useState("");
+  const idRef = useRef(0);
+  const recRef = useRef<any>(null);
+  const logRef = useRef<HTMLDivElement>(null);
 
-  const clearSpeakTimer = () => {
-    if (speakTimer.current) {
-      window.clearTimeout(speakTimer.current);
-      speakTimer.current = null;
-    }
-  };
-
-  // Cancel any ongoing Canta response immediately (and pause any briefing playback).
-  const interrupt = () => {
-    let didInterrupt = false;
-    if (speaking) {
-      clearSpeakTimer();
-      setSpeaking(false);
-      setLog((l) => l.map((m, i) => i === l.length - 1 ? { ...m, a: m.a.replace(/ — interrupted\.$/, "") + " — interrupted." } : m));
-      didInterrupt = true;
-    }
-    if (player.playing) {
-      player.pause();
-      didInterrupt = true;
-    }
-    if (didInterrupt) {
-      setInterrupted(true);
-      window.setTimeout(() => setInterrupted(false), 700);
-      if (navigator.vibrate) navigator.vibrate(12);
-    }
-  };
+  const engine = useMemo(
+    () => new VoiceEngine({ onStatus: setStatus, pausePlayer: () => usePlayer.getState().pause() }),
+    []
+  );
+  const speechSupported = useMemo(() => !!getRecognitionCtor(), []);
+  const ttsSupported = useMemo(() => browserSpeaker().supported, []);
 
   useEffect(() => {
-    if (!open) {
-      clearSpeakTimer();
-      setTimeout(() => { setLog([]); setKeyboard(false); setMuted(false); setSpeaking(false); setInterrupted(false); }, 300);
-    }
-  }, [open]);
+    engine.setSpeaker(!muted && ttsSupported ? browserSpeaker() : null);
+  }, [engine, muted, ttsSupported]);
 
+  // Player and voice never overlap: starting the player cancels Canta's output.
   useEffect(() => {
-    transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
-  }, [log, speaking]);
+    registerVoiceCanceller(() => engine.cancelOutput());
+    return () => registerVoiceCanceller(null);
+  }, [engine]);
 
-  const send = (q: string) => {
-    if (!q.trim()) return;
-    // Speaking again interrupts the current response / any playing briefing
-    interrupt();
-    const r = respond(q);
-    setLog((l) => [...l, { q, a: r.text, confirm: r.confirm }]);
+  const stopRecognition = useCallback(() => {
+    const r = recRef.current;
+    recRef.current = null;
+    if (r) { r.onresult = r.onerror = r.onend = r.onspeechstart = null; try { r.abort(); } catch { /* noop */ } }
+    setInterim("");
+    engine.setListening(false);
+  }, [engine]);
+
+  // Cleanup on close/unmount.
+  useEffect(() => {
+    if (!open) { stopRecognition(); engine.dispose(); setStatus("idle"); }
+  }, [open, engine, stopRecognition]);
+  useEffect(() => () => { stopRecognition(); engine.dispose(); }, [engine, stopRecognition]);
+
+  useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [msgs, interim]);
+
+  const push = (m: Omit<Msg, "id">) => setMsgs((prev) => [...prev, { ...m, id: ++idRef.current }]);
+
+  const send = (text: string) => {
+    const q = text.trim();
+    if (!q) return;
+    push({ role: "user", text: q });
     setInput("");
-    setSpeaking(true);
-    speakTimer.current = window.setTimeout(() => setSpeaking(false), Math.min(6000, 1500 + r.text.length * 28));
+    const r = respond(q);
+    if (r.action?.type === "channel") {
+      setChannel(r.action.channel);
+      if (pathname !== "/app") nav("/app");
+    }
+    push({ role: "canta", text: r.text, confirm: r.confirm });
+    engine.reply(r.confirm ? `${r.text} ${r.confirm}` : r.text);
   };
 
-  const resolve = (i: number, ok: boolean) => {
-    setLog((l) => l.map((m, idx) => idx === i ? { ...m, resolved: true, a: m.a + (ok ? " — Done." : " — Cancelled.") } : m));
+  const interrupt = () => {
+    const playerWas = usePlayer.getState().playing;
+    const cancelled = engine.interrupt();
+    if (!cancelled && playerWas) setStatus("interrupted");
   };
+
+  const startListening = () => {
+    const Ctor = getRecognitionCtor();
+    if (!Ctor) { setMicNote("Voice input isn't supported in this browser. Type your command instead."); return; }
+    if (engine.busy || usePlayer.getState().playing) engine.interrupt();
+    const rec = new Ctor();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onspeechstart = () => { if (engine.busy) engine.interrupt(); };
+    rec.onresult = (e: any) => {
+      let finalText = "";
+      let interimText = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) finalText += res[0].transcript; else interimText += res[0].transcript;
+      }
+      if (engine.busy) engine.interrupt(); // speaking again cancels immediately
+      setInterim(interimText);
+      if (finalText) { stopRecognition(); send(finalText); }
+    };
+    rec.onerror = (e: any) => {
+      const err = e?.error;
+      stopRecognition();
+      if (err === "not-allowed" || err === "service-not-allowed") setMicNote("Microphone access was denied. You can still type commands.");
+      else if (err !== "no-speech" && err !== "aborted") setMicNote("Voice input stopped. You can type instead.");
+    };
+    rec.onend = () => { if (recRef.current === rec) stopRecognition(); };
+    try {
+      rec.start();
+      recRef.current = rec;
+      setMicNote(null);
+      engine.setListening(true);
+    } catch {
+      setMicNote("Couldn't start voice input. Type instead.");
+    }
+  };
+
+  const listening = status === "listening";
+  const busy = status === "thinking" || status === "speaking" || status === "paused";
+  const canInterrupt = busy || playerPlaying;
+
+  const resolveConfirm = (id: number, yes: boolean) => {
+    setMsgs((prev) => prev.map((m) => (m.id === id ? { ...m, resolved: true } : m)));
+    if (yes) toast.success("Demo: unsubscribed from NovaAxis weekly digest", { description: "Simulated — no email was sent." });
+    else toast("Cancelled. Nothing changed.");
+  };
+
+  const motion: AuroraMode = reduced || hidden ? "still"
+    : status === "interrupted" ? "burst"
+    : muted || status === "paused" ? "calm"
+    : status === "speaking" ? "active"
+    : status === "listening" || status === "thinking" ? "attentive" : "idle";
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
-          className="fixed inset-0 z-50 overflow-hidden text-foreground"
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+          className="fixed inset-0 z-50 flex flex-col text-foreground outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+          aria-describedby="canta-voice-desc"
         >
-          {/* Neural Expressive aurora — fullscreen, palette: white/blue/green/gold/violet/yellow/pink */}
-          <NeuralAurora speaking={speaking} muted={muted} interrupted={interrupted} />
-
-          {/* Top bar */}
-          <div className="relative z-10 flex items-center justify-between px-5 sm:px-8 pt-5 sm:pt-7">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${interrupted ? "bg-canta-pink" : "bg-success"} animate-pulse`} />
-              <p className="text-[11px] tracking-[0.25em] uppercase text-foreground/70">
-                {interrupted ? "Canta · interrupted" : speaking ? "Canta · speaking — tap to interrupt" : muted ? "Canta · muted" : "Canta · listening"}
-              </p>
+          {SPLINE_SCENE_URL && !reduced ? (
+            <div className="absolute inset-0" aria-hidden>
+              <Suspense fallback={<NeuralAurora mode={motion} />}>
+                <SplineBackground url={SPLINE_SCENE_URL} />
+              </Suspense>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => setOpen(false)} className="rounded-full h-10 w-10 text-foreground hover:bg-card/60">
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          ) : (
+            <NeuralAurora mode={motion} />
+          )}
 
-          {/* Center stage — minimal, the whole screen is the orb. Tap to interrupt when speaking. */}
-          <button
-            type="button"
-            onClick={() => { if (speaking || player.playing) interrupt(); }}
-            className="relative z-10 grid place-items-center mt-10 sm:mt-16 w-full focus:outline-none"
-            aria-label={speaking ? "Interrupt Canta" : "Canta status"}
-          >
-            <div className="h-8 flex items-end justify-center gap-1 text-primary">
-              {speaking && Array.from({ length: 28 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="w-[3px] rounded-full bg-current"
-                  style={{
-                    height: `${10 + Math.abs(Math.sin((i + 1) * 0.7)) * 22}px`,
-                    animation: `wave ${0.55 + (i % 5) * 0.11}s ease-in-out infinite`,
-                    animationDelay: `${i * 0.035}s`,
-                  }}
-                />
-              ))}
-            </div>
-
-            <p className="serif-italic text-2xl sm:text-3xl mt-5 text-center px-6 text-foreground">
-              {interrupted ? "Okay — go ahead." : log.length === 0 ? "Say “Canta…”" : speaking ? "…" : "I'm here."}
-            </p>
-            {(speaking || player.playing) && !interrupted && (
-              <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] tracking-[0.22em] uppercase text-muted-foreground">
-                <Hand className="h-3 w-3" /> tap or speak to interrupt
-              </span>
-            )}
-          </button>
-
-
-          {/* Transcript */}
-          <div
-            ref={transcriptRef}
-            className="relative z-10 max-w-xl mx-auto mt-6 px-5 sm:px-0 max-h-[28vh] overflow-y-auto space-y-3"
-          >
-            {log.length === 0 && (
-              <div className="text-center text-xs tracking-widest uppercase text-muted-foreground flex items-center justify-center gap-2">
-                <Sparkles className="h-3.5 w-3.5" /> try a command below
+          <div className="relative z-10 flex flex-col h-full max-w-2xl w-full mx-auto px-4 sm:px-6 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <DialogPrimitive.Title className="font-display text-xl">Canta voice</DialogPrimitive.Title>
+                <DialogPrimitive.Description id="canta-voice-desc" className="text-xs text-muted-foreground">
+                  Demo · scripted responses, not a cloud AI model
+                </DialogPrimitive.Description>
               </div>
-            )}
-            {log.map((m, i) => (
-              <div key={i} className="space-y-1.5 animate-fade-up">
-                <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground text-right">you</p>
-                <div className="ml-auto max-w-[85%] bg-card/70 backdrop-blur rounded-2xl rounded-tr-sm px-4 py-2 text-sm text-right border border-border/60">{m.q}</div>
-                <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">canta</p>
-                <div className="mr-auto max-w-[90%] serif-italic text-[17px] leading-snug text-foreground">{m.a}</div>
-                {m.confirm && !m.resolved && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <p className="text-xs text-muted-foreground">{m.confirm}</p>
-                    <Button size="sm" variant="outline" onClick={() => resolve(i, false)} className="rounded-full h-8">Cancel</Button>
-                    <Button size="sm" onClick={() => resolve(i, true)} className="rounded-full h-8 bg-primary text-primary-foreground">Confirm</Button>
+              <DialogPrimitive.Close
+                className="h-11 w-11 shrink-0 rounded-full bg-card/80 border border-border grid place-items-center hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close voice agent"
+              >
+                <X className="h-5 w-5" />
+              </DialogPrimitive.Close>
+            </div>
+
+            <div className="mt-3 self-start rounded-full bg-card/85 border border-border px-3 py-1.5 text-sm font-medium flex items-center gap-2" role="status" aria-live="polite">
+              <span className={cn("h-2 w-2 rounded-full", status === "error" ? "bg-destructive" : busy || listening ? "bg-canta-violet" : "bg-success")} aria-hidden />
+              {playerPlaying && status === "idle" ? "Briefing playing — tap Interrupt to stop" : STATUS_LABEL[status]}
+            </div>
+
+            {/* Transcript panel — stable, readable surface over the motion */}
+            <div ref={logRef} className="mt-4 flex-1 min-h-0 overflow-y-auto rounded-3xl bg-card/90 backdrop-blur-xl border border-border shadow-elevated p-4 space-y-3" aria-label="Conversation transcript">
+              {msgs.length === 0 && (
+                <div>
+                  <p className="font-display text-2xl">Say “Canta…” or pick a command</p>
+                  <p className="text-sm text-muted-foreground mt-1">High-impact actions always ask before they run.</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((s) => (
+                      <button key={s} onClick={() => send(s)} className="min-h-11 px-4 rounded-full border border-border bg-background text-sm hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        {s}
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom control dock */}
-          <div className="absolute bottom-0 inset-x-0 z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+18px)] pt-4">
-            <div className="max-w-xl mx-auto">
-              {/* Suggestions */}
-              <div className="flex gap-1.5 overflow-x-auto pb-3 scrollbar-none -mx-1 px-1">
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => send(s)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-card/70 backdrop-blur border border-border/60 text-foreground hover:bg-card transition-colors">{s}</button>
-                ))}
-              </div>
-
-              {keyboard ? (
-                <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2 items-center rounded-full glass-dark p-1.5 pl-4 shadow-elevated">
-                  <Input
-                    autoFocus
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type a command…"
-                    className="border-0 bg-transparent text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-0 h-10"
-                  />
-                  <Button type="submit" size="icon" className="rounded-full h-10 w-10 bg-card text-foreground hover:bg-card/80 shrink-0"><Send className="h-4 w-4" /></Button>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => setKeyboard(false)} className="rounded-full h-10 w-10 text-primary-foreground hover:bg-white/10 shrink-0"><X className="h-4 w-4" /></Button>
-                </form>
-              ) : (
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => setKeyboard(true)}
-                    className="h-14 w-14 rounded-full glass border border-border/60 grid place-items-center text-foreground hover:bg-card transition-colors"
-                    aria-label="Type"
-                  >
-                    <Keyboard className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (speaking || player.playing) { interrupt(); return; }
-                      setMuted(!muted);
-                    }}
-                    className={`h-16 w-16 rounded-full grid place-items-center shadow-elevated hover:scale-105 transition-all ${
-                      speaking || player.playing
-                        ? "bg-gradient-spectrum text-primary-foreground scale-105"
-                        : "bg-primary text-primary-foreground animate-pulse-ring"
-                    }`}
-                    aria-label={speaking || player.playing ? "Interrupt" : muted ? "Unmute" : "Mute"}
-                  >
-                    {speaking || player.playing ? <Hand className="h-6 w-6" /> : muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-                  </button>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="h-14 w-14 rounded-full glass border border-border/60 grid place-items-center text-foreground hover:bg-card transition-colors"
-                    aria-label="End"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
                 </div>
               )}
+              {msgs.map((m) => (
+                <div key={m.id} className={cn("max-w-[85%] rounded-2xl px-4 py-2.5 text-sm", m.role === "user" ? "ml-auto bg-primary text-primary-foreground rounded-tr-sm" : "bg-background border border-border rounded-tl-sm")}>
+                  <p>{m.text}</p>
+                  {m.confirm && (
+                    <div className="mt-2">
+                      <p className="font-medium">{m.confirm}</p>
+                      {!m.resolved && (
+                        <div className="mt-2 flex gap-2">
+                          <button onClick={() => resolveConfirm(m.id, true)} className="min-h-11 px-4 rounded-full bg-primary text-primary-foreground text-sm flex items-center gap-1"><Check className="h-4 w-4" /> Confirm</button>
+                          <button onClick={() => resolveConfirm(m.id, false)} className="min-h-11 px-4 rounded-full border border-border text-sm">Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {interim && <p className="ml-auto max-w-[85%] text-sm italic text-muted-foreground text-right">{interim}</p>}
             </div>
+
+            {micNote && <p className="mt-2 text-xs rounded-xl bg-card/90 border border-border px-3 py-2" role="alert">{micNote}</p>}
+            {listening && (
+              <p className="mt-2 text-xs text-muted-foreground">Voice input uses your browser's speech service, which may process audio with the browser vendor. Nothing is stored by Canta.</p>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="mt-3 flex items-center gap-2 rounded-full bg-card/95 border border-border p-1.5 shadow-soft">
+              <label htmlFor="canta-cmd" className="sr-only">Type a command for Canta</label>
+              <input
+                id="canta-cmd"
+                value={input}
+                onChange={(e) => { setInput(e.target.value); if (e.target.value && engine.busy) engine.interrupt(); }}
+                placeholder="Type a command…"
+                className="flex-1 min-w-0 bg-transparent px-3 h-11 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <button type="submit" disabled={!input.trim()} aria-label="Send command" className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground grid place-items-center disabled:opacity-50">
+                <Send className="h-4 w-4" />
+              </button>
+            </form>
+
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setMuted((v) => !v)}
+                aria-pressed={muted}
+                aria-label={muted ? "Unmute Canta's voice" : "Mute Canta's voice"}
+                className="h-12 w-12 rounded-full bg-card/90 border border-border grid place-items-center hover:bg-card"
+              >
+                {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
+              {(status === "speaking" || status === "paused") && (
+                <button
+                  onClick={() => (status === "paused" ? engine.resume() : engine.pause())}
+                  aria-label={status === "paused" ? "Resume response" : "Pause response"}
+                  className="h-12 w-12 rounded-full bg-card/90 border border-border grid place-items-center hover:bg-card"
+                >
+                  {status === "paused" ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+                </button>
+              )}
+              {canInterrupt ? (
+                <button onClick={interrupt} className="h-16 px-6 rounded-full bg-gradient-spectrum text-primary-foreground shadow-elevated flex items-center gap-2 font-medium">
+                  <Hand className="h-5 w-5" /> Interrupt
+                </button>
+              ) : (
+                <button
+                  onClick={() => (listening ? stopRecognition() : startListening())}
+                  aria-pressed={listening}
+                  aria-label={listening ? "Stop listening" : speechSupported ? "Start voice input" : "Voice input unavailable"}
+                  className={cn("h-16 w-16 rounded-full bg-primary text-primary-foreground hover:bg-primary focus-visible:bg-primary active:bg-primary grid place-items-center shadow-elevated", listening && !reduced && "animate-pulse-ring")}
+                >
+                  {listening ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                </button>
+              )}
+            </div>
+            {!speechSupported && <p className="mt-2 text-center text-xs text-muted-foreground">Voice input isn't available in this browser — typing works everywhere.</p>}
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 };
 
@@ -244,7 +291,7 @@ export const VoiceFAB = () => {
   return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:bg-primary/90 active:bg-primary shadow-elevated grid place-items-center animate-pulse-ring hover:scale-105 transition-transform"
+      className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground hover:bg-primary focus-visible:bg-primary active:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shadow-elevated grid place-items-center hover:scale-105 transition-transform"
       aria-label="Open Canta voice agent"
     >
       <Mic className="h-6 w-6" />
@@ -252,22 +299,30 @@ export const VoiceFAB = () => {
   );
 };
 
-// Neural Expressive aurora — Gemini Live-inspired fullscreen reactive background.
-// Seven blobs drifting in the Canta palette: white, blue, green, gold, violet, yellow, pink.
-// Speed and opacity respond to speaking / muted state.
+type AuroraMode = "still" | "idle" | "attentive" | "active" | "calm" | "burst";
+
+// Fullscreen fluid spectrum: white, blue, green, gold, violet, yellow, pink. No black, no red.
 const AURORA_BLOBS = [
-  { color: "hsl(0 0% 100% / 0.85)",    anim: "neural-1", size: "70vmax", top: "-20%", left: "-15%" },
-  { color: "hsl(218 95% 62% / 0.65)",  anim: "neural-2", size: "62vmax", top: "-10%", left: "35%"  }, // blue
-  { color: "hsl(152 65% 55% / 0.55)",  anim: "neural-3", size: "60vmax", top: "30%",  left: "-25%" }, // green
-  { color: "hsl(42 92% 60% / 0.60)",   anim: "neural-4", size: "55vmax", top: "45%",  left: "40%"  }, // gold
-  { color: "hsl(272 80% 68% / 0.60)",  anim: "neural-5", size: "65vmax", top: "10%",  left: "10%"  }, // violet
-  { color: "hsl(50 95% 65% / 0.55)",   anim: "neural-6", size: "50vmax", top: "55%",  left: "10%"  }, // yellow
-  { color: "hsl(330 90% 75% / 0.55)",  anim: "neural-7", size: "58vmax", top: "-5%",  left: "55%"  }, // pink
+  { color: "hsl(0 0% 100% / 0.85)", anim: "neural-1", size: "70vmax", top: "-20%", left: "-15%" },
+  { color: "hsl(218 95% 62% / 0.65)", anim: "neural-2", size: "62vmax", top: "-10%", left: "35%" },
+  { color: "hsl(152 65% 55% / 0.55)", anim: "neural-3", size: "60vmax", top: "30%", left: "-25%" },
+  { color: "hsl(42 92% 60% / 0.60)", anim: "neural-4", size: "55vmax", top: "45%", left: "40%" },
+  { color: "hsl(272 80% 68% / 0.60)", anim: "neural-5", size: "65vmax", top: "10%", left: "10%" },
+  { color: "hsl(50 95% 65% / 0.55)", anim: "neural-6", size: "50vmax", top: "55%", left: "10%" },
+  { color: "hsl(330 90% 75% / 0.55)", anim: "neural-7", size: "58vmax", top: "-5%", left: "55%" },
 ];
 
-const NeuralAurora = ({ speaking, muted, interrupted }: { speaking: boolean; muted: boolean; interrupted: boolean }) => {
-  const baseDur = interrupted ? 4 : muted ? 28 : speaking ? 9 : 18;
-  const op = interrupted ? 1 : muted ? 0.55 : speaking ? 0.95 : 0.8;
+const MODE: Record<AuroraMode, { dur: number; op: number; scale: number }> = {
+  still: { dur: 0, op: 0.7, scale: 1 },
+  idle: { dur: 20, op: 0.75, scale: 1 },
+  calm: { dur: 32, op: 0.55, scale: 0.95 },
+  attentive: { dur: 13, op: 0.85, scale: 1.03 },
+  active: { dur: 8, op: 0.95, scale: 1.06 },
+  burst: { dur: 4, op: 1, scale: 1.15 },
+};
+
+const NeuralAurora = ({ mode }: { mode: AuroraMode }) => {
+  const m = MODE[mode];
   return (
     <div className="aurora-stage" aria-hidden>
       {AURORA_BLOBS.map((b, i) => (
@@ -280,17 +335,14 @@ const NeuralAurora = ({ speaking, muted, interrupted }: { speaking: boolean; mut
             height: b.size,
             top: b.top,
             left: b.left,
-            animation: `${b.anim} ${baseDur + i * 1.6}s ease-in-out infinite`,
+            animation: m.dur ? `${b.anim} ${m.dur + i * 1.6}s ease-in-out infinite` : "none",
             animationDelay: `${i * -2.3}s`,
-            opacity: op,
-            transform: interrupted ? "scale(1.15)" : "scale(1)",
+            opacity: m.op,
+            transform: `scale(${m.scale})`,
             transition: "opacity 500ms ease, transform 600ms ease",
           }}
         />
       ))}
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/60 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-background/70 to-transparent" />
     </div>
   );
 };
-

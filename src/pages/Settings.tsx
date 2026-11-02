@@ -9,10 +9,10 @@ const Setting = ({ icon: Icon, title, desc, value, onChange }: any) => (
       <Icon className="h-4 w-4" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="font-medium text-sm">{title}</p>
+      <p className="font-medium text-sm">{title} <span className="ml-1 text-[10px] uppercase tracking-widest text-muted-foreground">Planned · demo</span></p>
       <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{desc}</p>
     </div>
-    <Switch checked={value} onCheckedChange={onChange} />
+    <Switch checked={value} onCheckedChange={onChange} aria-label={`${title} (simulated)`} />
   </div>
 );
 
@@ -25,14 +25,14 @@ const Settings = () => {
       <header className="mb-6">
         <p className="text-xs uppercase tracking-widest text-primary font-semibold">Privacy & architecture</p>
         <h1 className="font-display text-3xl sm:text-4xl mt-1">Your data, your terms.</h1>
-        <p className="text-muted-foreground mt-2 text-sm">Canta is built privacy-first by architecture — not policy.</p>
+        <p className="text-muted-foreground mt-2 text-sm">Demo settings — these toggles are simulated and do not change how data is processed.</p>
       </header>
 
       <div className="rounded-3xl bg-gradient-hero p-6 text-primary-foreground mb-5 shadow-elevated relative overflow-hidden">
         <Shield className="absolute -right-4 -bottom-4 h-32 w-32 opacity-10" />
-        <p className="text-xs uppercase tracking-widest opacity-80 font-semibold">Current posture</p>
-        <p className="font-display text-2xl mt-1">Enterprise-grade · End-to-end encrypted</p>
-        <p className="text-sm opacity-90 mt-2">Raw source is always one tap away. We surface what's filtered. We never hide it.</p>
+        <p className="text-xs uppercase tracking-widest opacity-80 font-semibold">Planned architecture</p>
+        <p className="font-display text-2xl mt-1">Planned: encrypted sync & private processing</p>
+        <p className="text-sm opacity-90 mt-2">This prototype stores nothing and connects to no inbox. Every summary links to its mock source excerpt.</p>
       </div>
 
       <div className="space-y-3">

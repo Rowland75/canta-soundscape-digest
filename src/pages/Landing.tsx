@@ -11,7 +11,7 @@ const Landing = () => {
 
   const connect = (provider: string) => {
     setOpen(false);
-    toast.success(`${provider} connected`);
+    toast.success(`Demo: ${provider} selected`, { description: "Simulated — no account was connected." });
     setTimeout(() => nav("/onboarding"), 600);
   };
 
@@ -27,16 +27,9 @@ const Landing = () => {
           <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground grid place-items-center font-display text-lg leading-none">C</div>
           <div className="leading-tight">
             <p className="font-display text-base">Canta</p>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Audio · Intelligence</p>
+            
           </div>
         </div>
-
-        {/* Pill nav (desktop) */}
-        <nav className="hidden md:flex items-center gap-1 rounded-full glass-dark text-primary-foreground/90 px-2 py-1.5 shadow-elevated">
-          {["Listen", "Triage", "Brief", "Trust"].map((l) => (
-            <a key={l} href="#" className="px-4 py-1.5 text-sm rounded-full hover:bg-white/10 transition-colors">{l}</a>
-          ))}
-        </nav>
 
         <Button asChild size="sm" className="rounded-full bg-card text-foreground hover:bg-card/80 border border-border shadow-soft h-10 pr-2 pl-4 gap-1">
           <Link to="/app">
@@ -49,61 +42,28 @@ const Landing = () => {
       <section className="relative z-10 px-5 sm:px-10 pt-16 sm:pt-24 pb-32">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_auto] gap-10 items-end">
           <div className="animate-fade-up">
-            <p className="text-[11px] tracking-[0.25em] uppercase text-muted-foreground mb-6">An executive's quiet OS</p>
-            <h1 className="font-display text-[3.25rem] sm:text-7xl lg:text-[8rem] leading-[0.95] tracking-tight">
-              Hear what
-              <br />
-              <span className="serif-italic">matters.</span>
+            <p className="text-sm sm:text-base text-muted-foreground mb-6">Your audio-first intelligence OS.</p>
+            <h1 className="font-display text-[3.25rem] sm:text-7xl lg:text-[6.5rem] leading-[0.95] tracking-tight">
+              Hear what matters.<br /><span className="text-spectrum">Act by voice.</span>
             </h1>
-            <p className="mt-8 max-w-md text-base sm:text-lg text-muted-foreground leading-relaxed">
-              Canta listens to your inbox, contracts and feeds — then briefs you out loud. Speak back, and it acts.
-            </p>
-
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
               <Button asChild size="lg" className="h-14 px-7 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-base shadow-elevated">
-                <Link to="/app"><Radio className="mr-2 h-4 w-4" /> Open the live demo</Link>
+                <Link to="/app"><Radio className="mr-2 h-4 w-4" /> Enter Demo</Link>
               </Button>
               <Button size="lg" variant="ghost" onClick={() => setOpen(true)} className="h-14 px-6 rounded-full text-base hover:bg-card/60">
-                <Mail className="mr-2 h-4 w-4" /> Connect inbox <ArrowRight className="ml-2 h-4 w-4" />
+                <Mail className="mr-2 h-4 w-4" /> Connect Inbox <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Right rail meta (editorial) */}
-          <aside className="hidden lg:flex flex-col items-end gap-8 text-right text-sm pr-2">
-            <div>
-              <p className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-1">Currently briefing</p>
-              <p className="font-display text-lg">Atlas Ridge — phase 2</p>
-            </div>
-            <div>
-              <p className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-1">This week</p>
-              <p>Crownline contract review</p>
-              <p>Northbridge term sheet</p>
-              <p>Meridian Q2 budget</p>
-            </div>
-            <div className="rounded-2xl glass border border-border/60 px-4 py-3 text-left">
-              <p className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground">Signal today</p>
-              <p className="font-display text-2xl mt-0.5">7 items</p>
-              <p className="text-xs text-success">↓ 84% vs raw inbox</p>
-            </div>
-          </aside>
         </div>
       </section>
-
-      {/* Bottom ticker */}
-      <div className="absolute bottom-6 inset-x-0 z-10 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5 sm:px-10 flex items-center justify-between text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
-          <span>Voice-first</span>
-          <span className="hidden sm:inline">Private by default</span>
-          <span>Built for operators</span>
-        </div>
-      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl bg-card">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Connect your inbox</DialogTitle>
-            <DialogDescription>Canta becomes the intelligence layer on top of your inbox.</DialogDescription>
+            <DialogTitle className="font-display text-2xl">Connect Inbox — demo</DialogTitle>
+            <DialogDescription>Demo provider selection only. No real account is connected and no data leaves this page.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 mt-2">
             {[

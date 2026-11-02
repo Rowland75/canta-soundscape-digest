@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { feedItems, FeedItem, channelMeta } from "@/lib/canta-data";
-import { usePlayer, useVoice } from "@/lib/canta-store";
+import { usePlayer, useVoice, useChannel, ChannelKey } from "@/lib/canta-store";
 import { Play, Pause, Sparkles, ChevronRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,11 +18,11 @@ const FeedCard = ({ item }: { item: FeedItem }) => {
   const { itemId, playing, play, toggle } = usePlayer();
   const { setOpen } = useVoice();
   const isCurrent = itemId === item.id;
+  const [showSource, setShowSource] = useState(false);
 
   return (
     <motion.article
-      layout
-      initial={{ opacity: 0, y: 12 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
@@ -70,12 +71,36 @@ const FeedCard = ({ item }: { item: FeedItem }) => {
         <ChevronRight className="h-3.5 w-3.5 text-primary shrink-0" />
         <p className="text-xs text-foreground/80 flex-1">{item.suggestedAction}</p>
       </div>
+      <button onClick={() => setShowSource((v) => !v)} aria-expanded={showSource} className="mt-2 min-h-11 text-xs font-medium text-primary underline-offset-4 hover:underline">
+        {showSource ? "Hide source excerpt" : "View source excerpt"}
+      </button>
+      {showSource && (
+        <blockquote className="mt-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground/85">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Demo source excerpt (mock data)</p>
+          {item.rawExcerpt}
+        </blockquote>
+      )}
     </motion.article>
   );
 };
 
 const Feed = () => {
-  const [channel, setChannel] = useState<keyof typeof channelMeta>("work");
+  const { channel, setChannel } = useChannel();
+  const keys = Object.keys(channelMeta) as ChannelKey[];
+  const prevIdx = useRef(keys.indexOf(channel));
+  const idx = keys.indexOf(channel);
+  const dir = idx >= prevIdx.current ? 1 : -1;
+  prevIdx.current = idx;
+  const reduced = useReducedMotion();
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onKey = (e: React.KeyboardEvent) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    const n = (idx + d + keys.length) % keys.length;
+    setChannel(keys[n]);
+    tabRefs.current[n]?.focus();
+  };
   const items = feedItems.filter((i) => i.channel === channel);
 
   return (
@@ -86,18 +111,24 @@ const Feed = () => {
       </header>
 
       {/* Channel switcher */}
-      <div className="relative bg-card rounded-2xl border border-border/60 p-1 flex shadow-soft mb-5">
+      <div role="tablist" aria-label="Channels" onKeyDown={onKey} className="relative bg-card rounded-2xl border border-border/60 p-1 flex shadow-soft mb-5">
         {(Object.keys(channelMeta) as Array<keyof typeof channelMeta>).map((k) => {
           const m = channelMeta[k];
           const active = channel === k;
           return (
             <button
               key={k}
+              ref={(el) => (tabRefs.current[keys.indexOf(k)] = el)}
+              role="tab"
+              id={`tab-${k}`}
+              aria-selected={active}
+              aria-controls="channel-panel"
+              tabIndex={active ? 0 : -1}
               onClick={() => setChannel(k)}
               className={cn("relative flex-1 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-medium transition-colors z-10", active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               {active && (
-                <motion.div layoutId="channel-pill" className="absolute inset-0 bg-gradient-hero rounded-xl shadow-glow -z-10" transition={{ type: "spring", damping: 26, stiffness: 280 }} />
+                <motion.div layoutId="channel-pill" className="absolute inset-0 bg-gradient-hero rounded-xl shadow-glow -z-10" transition={reduced ? { duration: 0 } : { type: "spring", damping: 26, stiffness: 280 }} />
               )}
               <span className="hidden sm:inline">{m.label}</span>
               <span className="sm:hidden">{m.label.split(" ")[0]}</span>
@@ -109,10 +140,13 @@ const Feed = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={channel}
-          initial={{ opacity: 0, x: 20 }}
+          id="channel-panel"
+          role="tabpanel"
+          aria-labelledby={`tab-${channel}`}
+          initial={reduced ? false : { opacity: 0, x: 24 * dir }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.25 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, x: -24 * dir }}
+          transition={{ duration: reduced ? 0 : 0.25 }}
           className="space-y-3"
         >
           {items.map((item) => <FeedCard key={item.id} item={item} />)}
