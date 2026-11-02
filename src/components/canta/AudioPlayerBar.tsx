@@ -1,99 +1,78 @@
-import { usePlayer } from "@/lib/canta-store";
+import { usePlayer, useVoice, formatTime, HOLD_MS, lockAxis, shouldDismiss } from "@/lib/canta-store";
 import { feedItems } from "@/lib/canta-data";
-import { Play, Pause, SkipForward, SkipBack, X, Sparkles } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, X, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useVoice } from "@/lib/canta-store";
 import { useEffect, useRef, useState } from "react";
 
 export const AudioPlayerBar = () => {
-  const { itemId, playing, toggle, stop, play } = usePlayer();
+  const { itemId, playing, elapsed, duration, ended, toggle, stop, next, prev, tick } = usePlayer();
   const { setOpen } = useVoice();
-  const [progress, setProgress] = useState(0);
   const [drag, setDrag] = useState(0);
   const [dismissing, setDismissing] = useState(false);
   const [armed, setArmed] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const axisRef = useRef<"x" | "v" | null>(null);
   const armedRef = useRef(false);
+  const dragRef = useRef(0);
   const holdTimer = useRef<number | null>(null);
 
-  const item = feedItems.find((i) => i.id === itemId);
-  const idx = item ? feedItems.findIndex((i) => i.id === item.id) : -1;
-
+  // Simulated playback clock: advances by real elapsed time, idles while tab hidden.
   useEffect(() => {
     if (!playing) return;
-    const t = setInterval(() => setProgress((p) => (p >= 100 ? 0 : p + 0.6)), 120);
-    return () => clearInterval(t);
-  }, [playing, itemId]);
-
-  useEffect(() => setProgress(0), [itemId]);
-
-  if (!item) return null;
-
-  const next = () => idx < feedItems.length - 1 && play(feedItems[idx + 1].id);
-  const prev = () => idx > 0 && play(feedItems[idx - 1].id);
+    let last = performance.now();
+    const t = window.setInterval(() => {
+      const now = performance.now();
+      if (!document.hidden) tick((now - last) / 1000);
+      last = now;
+    }, 250);
+    return () => window.clearInterval(t);
+  }, [playing, tick]);
 
   const clearHold = () => {
-    if (holdTimer.current) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
+    if (holdTimer.current) { window.clearTimeout(holdTimer.current); holdTimer.current = null; }
+  };
+  useEffect(() => clearHold, []);
+
+  const item = feedItems.find((i) => i.id === itemId);
+  if (!item) return null;
+  const idx = feedItems.findIndex((i) => i.id === item.id);
+  const progress = duration ? (elapsed / duration) * 100 : 0;
+
+  const reset = () => {
+    clearHold();
+    startRef.current = null; axisRef.current = null; armedRef.current = false; dragRef.current = 0;
+    setDrag(0); setArmed(false);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     startRef.current = { x: e.clientX, y: e.clientY };
-    axisRef.current = null;
-    armedRef.current = false;
-    setArmed(false);
-    clearHold();
+    axisRef.current = null; armedRef.current = false; setArmed(false); clearHold();
     holdTimer.current = window.setTimeout(() => {
-      armedRef.current = true;
-      setArmed(true);
-      if (navigator.vibrate) navigator.vibrate(15);
-    }, 450);
+      armedRef.current = true; setArmed(true);
+      navigator.vibrate?.(15);
+    }, HOLD_MS);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!startRef.current) return;
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
-
     if (!axisRef.current) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dy) > Math.abs(dx)) {
-        axisRef.current = "v";
-        clearHold();
-        armedRef.current = false;
-        setArmed(false);
-        return;
-      }
-      axisRef.current = "x";
+      const axis = lockAxis(dx, dy);
+      if (!axis) return;
+      axisRef.current = axis;
+      if (axis === "v" || !armedRef.current) { clearHold(); if (axis === "v") { armedRef.current = false; setArmed(false); } }
     }
-
-    if (axisRef.current === "x" && armedRef.current) {
-      setDrag(dx);
-    }
+    if (axisRef.current === "x" && armedRef.current) { dragRef.current = dx; setDrag(dx); }
   };
   const endDrag = () => {
-    clearHold();
-    const DISMISS_PX = 140;
-    if (armedRef.current && Math.abs(drag) > DISMISS_PX) {
-      const dir = drag > 0 ? 1 : -1;
-      setDismissing(true);
-      setDrag(dir * 600);
-      setTimeout(() => {
-        stop();
-        setDismissing(false);
-        setDrag(0);
-        setArmed(false);
-      }, 200);
-    } else {
-      setDrag(0);
-      setArmed(false);
-    }
-    startRef.current = null;
-    axisRef.current = null;
-    armedRef.current = false;
+    if (shouldDismiss(armedRef.current, axisRef.current, dragRef.current)) {
+      const dir = dragRef.current > 0 ? 1 : -1;
+      clearHold();
+      setDismissing(true); setDrag(dir * 600);
+      window.setTimeout(() => { stop(); setDismissing(false); reset(); }, 200);
+      startRef.current = null;
+    } else reset();
   };
 
   const opacity = Math.max(0, 1 - Math.abs(drag) / 260);
@@ -101,51 +80,34 @@ export const AudioPlayerBar = () => {
   return (
     <div className="fixed bottom-[68px] lg:bottom-4 inset-x-0 z-40 px-3 lg:left-60 animate-fade-up">
       <div
-        className={`mx-auto max-w-3xl surface-spectrum border rounded-2xl shadow-spectrum overflow-hidden touch-pan-y select-none ${
-          armed ? "border-canta-violet/70 ring-2 ring-canta-violet/40" : "border-border/60"
-        }`}
-        style={{
-          transform: `translateX(${drag}px)`,
-          opacity,
-          transition: dismissing || drag === 0 ? "transform 0.2s ease, opacity 0.2s ease" : "none",
-        }}
+        role="region"
+        aria-label="Briefing player"
+        className={`mx-auto max-w-3xl surface-spectrum border rounded-2xl shadow-spectrum overflow-hidden touch-pan-y select-none ${armed ? "border-canta-violet/70 ring-2 ring-canta-violet/40" : "border-border/60"}`}
+        style={{ transform: `translateX(${drag}px)`, opacity, transition: dismissing || drag === 0 ? "transform 0.2s ease, opacity 0.2s ease" : "none" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerCancel={reset}
       >
-        <div className="h-1 bg-muted/60 relative">
-          <div className="absolute inset-y-0 left-0 bg-gradient-spectrum transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-1 bg-muted/60 relative" role="progressbar" aria-label="Playback progress" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(elapsed)}>
+          <div className="absolute inset-y-0 left-0 bg-gradient-spectrum" style={{ width: `${progress}%` }} />
         </div>
-        <div className="p-3 flex items-center gap-3">
-          <div className="relative h-11 w-11 rounded-xl bg-gradient-spectrum grid place-items-center text-primary-foreground shrink-0 shadow-spectrum">
-            {playing ? (
-              <span className="flex items-end h-5">
-                <span className="audio-bar" style={{ animationDelay: "0s" }} />
-                <span className="audio-bar" style={{ animationDelay: "0.15s" }} />
-                <span className="audio-bar" style={{ animationDelay: "0.3s" }} />
-              </span>
-            ) : (
-              <Play className="h-5 w-5" />
-            )}
-          </div>
+        <div className="p-3 flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground truncate">{item.sender} · {item.duration}</p>
+            <p className="text-xs text-muted-foreground truncate">{item.sender} · {formatTime(elapsed)} / {item.duration} · {ended ? "Finished" : "Simulated playback"}</p>
             <p className="text-sm font-medium truncate">{item.title}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" onClick={prev} className="h-9 w-9"><SkipBack className="h-4 w-4" /></Button>
-            <Button size="icon" onClick={toggle} className="h-10 w-10 rounded-full bg-gradient-spectrum text-primary-foreground shadow-spectrum hover:opacity-90">
-              {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          <div className="flex items-center gap-0.5">
+            <Button size="icon" variant="ghost" onClick={prev} disabled={idx <= 0} aria-label="Previous briefing" className="h-11 w-11"><SkipBack className="h-4 w-4" /></Button>
+            <Button size="icon" onClick={toggle} aria-label={playing ? "Pause" : ended ? "Replay" : "Play"} className="h-11 w-11 rounded-full bg-gradient-spectrum text-primary-foreground shadow-spectrum hover:opacity-90">
+              {playing ? <Pause className="h-4 w-4" /> : ended ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
-            <Button size="icon" variant="ghost" onClick={next} className="h-9 w-9"><SkipForward className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" onClick={() => setOpen(true)} className="h-9 w-9 text-primary"><Sparkles className="h-4 w-4" /></Button>
-            <Button size="icon" variant="ghost" onClick={stop} className="h-9 w-9 hidden sm:inline-flex"><X className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={next} disabled={idx >= feedItems.length - 1} aria-label="Next briefing" className="h-11 w-11"><SkipForward className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={() => setOpen(true)} aria-label="Ask Canta" className="h-11 w-11 text-primary hidden sm:inline-flex"><Sparkles className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" onClick={stop} aria-label="Close player" className="h-11 w-11"><X className="h-4 w-4" /></Button>
           </div>
         </div>
-        <div className="px-4 pb-3 -mt-1">
-          <p className="text-xs text-muted-foreground line-clamp-2">{item.summary}</p>
-        </div>
+        <p className="px-4 pb-3 -mt-1 text-xs text-muted-foreground line-clamp-2">{item.summary}</p>
       </div>
     </div>
   );
