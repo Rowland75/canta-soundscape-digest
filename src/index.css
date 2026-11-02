@@ -58,7 +58,7 @@
     --gradient-hero: linear-gradient(135deg, hsl(220 55% 18%) 0%, hsl(244 60% 35%) 60%, hsl(272 70% 50%) 100%);
     --gradient-violet: linear-gradient(135deg, hsl(272 75% 55%), hsl(244 65% 40%));
     --gradient-soft: linear-gradient(180deg, hsl(220 60% 98%), hsl(225 55% 95%));
-    --gradient-gold: linear-gradient(135deg, hsl(42 95% 62%), hsl(34 80% 50%));
+    --gradient-gold: linear-gradient(135deg, hsl(42 95% 62%), hsl(48 95% 58%));
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(222 60% 97%));
     --gradient-warm: radial-gradient(ellipse at top left, hsl(222 80% 97%) 0%, hsl(0 0% 100%) 55%, hsl(272 60% 98%) 100%);
     --gradient-orb: radial-gradient(circle at 30% 30%, hsl(218 95% 70%) 0%, hsl(272 80% 60%) 35%, hsl(330 80% 65%) 70%, hsl(42 90% 60%) 100%);
@@ -134,7 +134,7 @@
   }
 
   .glass {
-    background: hsl(30 30% 96% / 0.55);
+    background: hsl(0 0% 100% / 0.6);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
   }
